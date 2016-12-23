@@ -1,0 +1,18 @@
+{
+    "user_dirs": false, 
+    "permission": {"group": false,
+    			  "others": false}, 
+     "ownership": {"user" : null, 
+     			  "group": "artists"},
+    "job_asset": "$USER", 
+    "sub_dirs": {"camera":"", 
+    	"render":""},
+    "job_group": "user", 
+    "names": [], 
+    "link_root": null, 
+    "is_link": false, 
+    "link_target": null, 
+    "root": "/PROD/dev", 
+    "job_name": "sandbox",
+    "path_template": "@root/@job_name/@job_group/@job_asset"
+}

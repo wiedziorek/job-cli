@@ -1,0 +1,12 @@
+{
+    "user_dirs": false, 
+    "job_asset": "$USER", 
+    "sub_dirs": {"camera_formats":""},
+    "job_group": "user", 
+    "names": ["camera"], 
+    "link_root": null, 
+    "is_link": false, 
+    "link_target": null, 
+    "root": "/PROD/dev", 
+    "job_name": "sandbox"
+}

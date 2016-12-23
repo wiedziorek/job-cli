@@ -1,0 +1,12 @@
+{
+    "user_dirs": false, 
+    "job_asset": "$USER", 
+    "sub_dirs": {},
+    "job_group": "user", 
+    "names": ["abc", "json", "chan"], 
+    "link_root": null, 
+    "is_link": false, 
+    "link_target": null, 
+    "root": "/PROD/dev", 
+    "job_name": "sandbox"
+}
