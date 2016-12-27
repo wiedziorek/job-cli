@@ -1,6 +1,8 @@
 import os
 import stat
 import json
+from ordereddict import OrderedDict
+
 
 
 class RenderedLocation(dict):
@@ -10,9 +12,11 @@ class RenderedLocation(dict):
         remote location. It's like a rendered flatten image of 
         all changes that will be performed.
     """
+    parent = None
     def __init__(self, path, source, parent=None):
         """ This populates generated paths with common attributes.
         """
+        self.parent = parent
         self['path'] = path
         self['permission']  = {'group': False, 'others': False}
         self['ownership']   = {'user' : None, 'group': 'artists'}
@@ -45,24 +49,37 @@ class LocationTemplate(dict):
         provided by Job class and a 'obj', which is a name allowing to initilize it with 
         selected template.
     """
-    schema = {}
-    def __init__(self, schema, obj, **kwargs):
+    schema  = {}
+    parent  = None
+    def __init__(self, schema, obj, parent=None, **kwargs):
         super(LocationTemplate, self).__init__(schema[obj])
-    
+        self.parent = parent
         for k, v in kwargs.items():
             self[k] = v
 
+    def __getitem__(self, key):
+        """ LocationTemplates are nested inside each othter. This custom getter
+            looks for a key locally, and if not succeed, looks up the parents 
+            recursively.
+        """
+        if key in self.keys():
+            return super(LocationTemplate, self).__getitem__(key)
+        else:
+            # We are at a root level, and still no value... 
+            if self.parent == None:
+                raise KeyError, "No key found in self or parents: %s" % key
+            return self.parent[key]
 
-    def expand_path_template(self, template=None, replace_dir=None):
+
+    def expand_path_template(self, template=None):
         """ This should be replaced with more elaboreted and safe template renderer. 
         """
         from os.path import join
 
         if not template:
-            if  'path_template' in self.keys():
-                template = self['path_template']
-            else:
-                raise Exception, "No template found at %s" % str(self)
+            # This will raise an exception if no path_template has been found here
+            # or up.
+            template = self['path_template']
 
         consists = template.split("/")
         expanded_directores = []
@@ -71,12 +88,7 @@ class LocationTemplate(dict):
             # all but first character is valid
             keyword = element[1:]
             if element.startswith("@"):
-                # We allow arbitrary element replacement via provided dictionary. 
-                if keyword in replace_dir:
-                    print "replacing " + keyword, 
-                    keyword = replace_dir[keyword]
-                    print keyword
-                assert keyword in self.keys()
+                # assert keyword in self.keys() # This won't work with nested 
                 value = self[keyword]
             # We support also env var. which is probably bad idea...
             elif element.startswith("$"):
@@ -90,54 +102,46 @@ class LocationTemplate(dict):
         return path
 
     def render(self, _root=None, recursive=True, parent=None):
-        """ Returns a list of path created by this object along with
-            possible subdirectories.
+        """ Creates recursively LocationTemplate objects, resolving 
+            overrides and expanding variables. 
+
+            Returns: Dictonary with all paths as a keys, and coresponding
+            templetes as values to use this information down the stream.
+            {'/some/path': LocationTemplate(), ...}
         """
         from os.path import join, expandvars
-
-        renders = []
-        replace_dir = {}
-
-        if self['link_root']:
-            replace_dir = {'root': 'link_root'}
-            self['is_link'] = True
+        targets = OrderedDict()
 
         # If root wasn't provided take it from self or
         # regenerate it with path_template if avaible.
-        if not _root or self['link_root']:
-            if "path_template" in self.keys():
-                root = self.expand_path_template(self['path_template'], replace_dir=replace_dir)
-            else:
-                root = self['link_root'] if self['is_link'] else self['root']
-                # Expands env vars and use default structure.
-                # This is fall back to default studio structure:
-                root = expandvars(join(root, self['job_name'], \
-                    self['job_group'], self['job_asset']))
+        if not _root or self['is_link']:
+            template = self['path_template']
+            root = self.expand_path_template(template)
         else:
             root = _root
 
-
         for name in self['names']:
             path = expandvars(join(root, name))
-            details = RenderedLocation(path, self, parent)
-            renders += [details]
+            targets[path] = self
 
         if not recursive:
-            return paths
+            return 
 
-        for subpath in self['sub_dirs']:
+        for sub_template in self['sub_dirs']:
             # Although the template was specified in a sub_dir
             # its definition is not in a path, so we omitt it.
-            if not subpath in self.schema.keys():
+            if not sub_template in self.schema.keys():
                 continue
 
-            location = LocationTemplate(self.schema, subpath)
-            _paths = location.render(path, parent=self)
-            for p in _paths:
-                if p not in renders:
-                    renders += [p]
+            location = LocationTemplate(self.schema, sub_template, parent=self)
+            subtargets = location.render(path, parent=self)
 
-        return renders
+            for tgk in subtargets:
+                if tgk not in targets.keys():
+                    targets[tgk] = subtargets[tgk]
+
+        return targets
+
 
     def __repr__(self):
         """Pretty-like print with json rastezier."""
@@ -226,6 +230,10 @@ class Job(LocationTemplate):
         """ Initialize job by looking through JOBB_PATH locations and loading
             schema files from there. The later path in JOBB_PATH will override
             the former schames. 
+
+            Note: Sub templates are created lazy on path rendering.
+            job = Job() (no child templates created)
+            job.render() (children createde recursively)
         """
         from os.path import join
         schema_locations = os.getenv(jobb_path, "./")
@@ -243,22 +251,35 @@ class Job(LocationTemplate):
     def make(self):
         """ TODO: This is only fo testing purposes.
         """
-
-        paths_to_create = self.render()
-        for details in paths_to_create:
-            if os.path.exists(details['path']):
-                print "Path exists: %s" % details['path']
-                continue
+        def make_dir(path):
+            if os.path.exists(path):
+                print "Path exists: %s" % path
             try:
-                os.makedirs( details['path'])
+                os.makedirs(path)
             except:
-                print "Couldn't make %s" %  details['path']
+                print "Couldn't make %s" %  path
 
-        for details in paths_to_create:   
+        def make_link(path, targets):
+            # ???
+            parent = targets[path].parent
+            assert parent != None
+            # Find parent path by template object. 
+            # TODO: Is it bug? There might be many parents paths?
+            parent_path = targets.keys()[targets.values().index(parent)] 
+            old_path, name = os.path.split(path)
+            link_path = os.path.join(parent_path, name)
+            os.symlink(path, link_path) 
 
-            self.remove_write_permissions(details['path'])
-            self.add_write_permissions(details['path'], **details['permission'])
-            self.set_ownership(details['path'], **details['ownership'])
+        targets = self.render()
+
+        for path in targets:
+            make_dir(path)
+            if targets[path]['is_link']:
+                make_link(path, targets)
+
+            self.remove_write_permissions(path)
+            self.add_write_permissions(path, **targets[path]['permission'])
+            self.set_ownership(path, **targets[path]['ownership'])
 
 
 
@@ -270,5 +291,5 @@ if __name__ == "__main__":
     templates =  job.render()
     for template in templates:
         print template
-    #print job.make()
+    print job.make()
    
