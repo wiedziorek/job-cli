@@ -51,9 +51,13 @@ class LocationTemplate(dict):
     """
     schema  = {}
     parent  = None
-    def __init__(self, schema, obj, parent=None, **kwargs):
-        super(LocationTemplate, self).__init__(schema[obj])
+    schema_type_name = None
+    def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
+        if schema and schema_type_name:
+            super(LocationTemplate, self).__init__(schema[schema_type_name])
+
         self.parent = parent
+        self.schema_type_name = schema_type_name
         for k, v in kwargs.items():
             self[k] = v
 
@@ -101,6 +105,31 @@ class LocationTemplate(dict):
 
         return path
 
+    def extend_schema_with_adhoc_definition(self, schema_dict):
+        """ LocationTemplate could be provided as simple sub_dirs
+            inline. This should be used only for basic templates.
+            By default all setting will be inherited from parent
+            template. User can override it with "options" field
+            inside inline template dictionary.
+
+            Params: schema dictonary with three keys:
+            { "name"   : location name
+              "type"   : "location" for inline temp. or "template" for file based.
+              "options": {} dict with overritten settings.
+            }
+        """
+
+        schema = LocationTemplate({}, None)
+        schema['sub_dirs'] = []
+        schema['names'] = [schema_dict['name']]
+        if schema_dict['options']:
+            for k, v in schema_dict['options'].items():
+                schema[k] = v
+
+        self.schema[schema['names'][0]] = schema
+        print schema
+
+
     def render(self, _root=None, recursive=True, parent=None):
         """ Creates recursively LocationTemplate objects, resolving 
             overrides and expanding variables. 
@@ -129,11 +158,19 @@ class LocationTemplate(dict):
 
         for sub_template in self['sub_dirs']:
             # Although the template was specified in a sub_dir
-            # its definition is not in a path, so we omitt it.
-            if not sub_template in self.schema.keys():
+            # its definition can't be found, so we omitt it..
+            if not sub_template['name'] in self.schema.keys() \
+            and sub_template['type'] == "template":
+                # print "Omitting absent template."
                 continue
 
-            location = LocationTemplate(self.schema, sub_template, parent=self)
+            # Expand schema shop (self.schema) inplace specification.
+            if sub_template['type'] == "location":
+                self.extend_schema_with_adhoc_definition(sub_template) 
+                # print "Expanding schema with %s" % sub_template   
+
+            # 
+            location = LocationTemplate(self.schema, sub_template['name'], parent=self)
             subtargets = location.render(path, parent=self)
 
             for tgk in subtargets:
@@ -256,6 +293,7 @@ class Job(LocationTemplate):
                 print "Path exists: %s" % path
             try:
                 os.makedirs(path)
+                print "Making %s" % path
             except:
                 print "Couldn't make %s" %  path
 
@@ -270,8 +308,11 @@ class Job(LocationTemplate):
             link_path = os.path.join(parent_path, name)
             try:
                 os.symlink(path, link_path) 
+                print "Making symlink %s %s" % (path, link_path) 
             except:
                 print "Can't make a link %s %s" % (path, link_path)
+
+
 
         targets = self.render()
 
