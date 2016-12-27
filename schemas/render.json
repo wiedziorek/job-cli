@@ -1,0 +1,8 @@
+{ 
+    "sub_dirs": [{"name": "render_target", "type": "template", "options": null}, 
+   				 {"name": "renderfarm",    "type": "template", "options": null}],
+    "names": ["render"], 
+    "is_link": true, 
+    "link_target": null,
+    "root": "/tmp/mama"
+}

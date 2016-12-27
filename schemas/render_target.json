@@ -1,0 +1,10 @@
+{
+    "user_dirs": true, 
+     "permission": {"group": false,
+                  "others": false},  
+    "sub_dirs":[],
+    "names": ["mantra", "nuke", "maya", "afx"], 
+    "link_root": null, 
+    "is_link": false, 
+    "link_target": null
+}

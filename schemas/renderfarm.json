@@ -1,0 +1,6 @@
+{ 
+    "sub_dirs": [{"type": "location", "name": "ifd", "options": {"permission": {"group": true, "others": true}}}],
+    "names": ["renderfarm"], 
+    "is_link": false, 
+    "link_target": null
+}

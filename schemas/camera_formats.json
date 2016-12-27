@@ -1,7 +1,9 @@
 {
     "user_dirs": false, 
+     "permission": {"group": true,
+                  "others": false}, 
     "job_asset": "$USER", 
-    "sub_dirs": {},
+    "sub_dirs": [],
     "job_group": "user", 
     "names": ["abc", "json", "chan"], 
     "link_root": null, 
