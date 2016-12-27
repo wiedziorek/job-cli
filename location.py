@@ -14,9 +14,12 @@ class RenderedLocation(dict):
         """ This populates generated paths with common attributes.
         """
         self['path'] = path
-        self['permission'] = {'group': False, 'others': False}
-        self['ownership']  = {'user' : None, 'group': 'artists'}
+        self['permission']  = {'group': False, 'others': False}
+        self['ownership']   = {'user' : None, 'group': 'artists'}
         self['is_link']     = False
+        self['link_root']   = False
+        self['link_target'] = None
+        self['root']        = None
 
         # Parent copies settings first if provided:
         if parent:
@@ -50,8 +53,8 @@ class LocationTemplate(dict):
             self[k] = v
 
 
-    def expand_path_template(self, template=None):
-        """ 
+    def expand_path_template(self, template=None, replace_dir=None):
+        """ This should be replaced with more elaboreted and safe template renderer. 
         """
         from os.path import join
 
@@ -61,14 +64,29 @@ class LocationTemplate(dict):
             else:
                 raise Exception, "No template found at %s" % str(self)
 
-        items = template.split("/")
-        dirs = []
-        for item in items:
-            if item.startswith("@"):
-                assert item[1:] in self.keys()
-                item = self[item[1:]]
-            dirs += [item]
-            path = join(*dirs)
+        consists = template.split("/")
+        expanded_directores = []
+
+        for element in consists:
+            # all but first character is valid
+            keyword = element[1:]
+            if element.startswith("@"):
+                # We allow arbitrary element replacement via provided dictionary. 
+                if keyword in replace_dir:
+                    print "replacing " + keyword, 
+                    keyword = replace_dir[keyword]
+                    print keyword
+                assert keyword in self.keys()
+                value = self[keyword]
+            # We support also env var. which is probably bad idea...
+            elif element.startswith("$"):
+                value = os.getenv(keyword, None)
+                assert value != None
+
+            expanded_directores += [value]
+
+        path = join(*expanded_directores)
+
         return path
 
     def render(self, _root=None, recursive=True, parent=None):
@@ -78,18 +96,26 @@ class LocationTemplate(dict):
         from os.path import join, expandvars
 
         renders = []
+        replace_dir = {}
+
+        if self['link_root']:
+            replace_dir = {'root': 'link_root'}
+            self['is_link'] = True
+
         # If root wasn't provided take it from self or
         # regenerate it with path_template if avaible.
-        if not _root:
+        if not _root or self['link_root']:
             if "path_template" in self.keys():
-                root = self.expand_path_template(self['path_template'])
+                root = self.expand_path_template(self['path_template'], replace_dir=replace_dir)
             else:
-                root = self['root']
+                root = self['link_root'] if self['is_link'] else self['root']
                 # Expands env vars and use default structure.
+                # This is fall back to default studio structure:
                 root = expandvars(join(root, self['job_name'], \
                     self['job_group'], self['job_asset']))
         else:
-            root = _root 
+            root = _root
+
 
         for name in self['names']:
             path = expandvars(join(root, name))
@@ -241,6 +267,8 @@ if __name__ == "__main__":
 
     job = Job(job_name='sandbox', root='/tmp/dada')
    
-    print job.render()
-    print job.make()
+    templates =  job.render()
+    for template in templates:
+        print template
+    #print job.make()
    
