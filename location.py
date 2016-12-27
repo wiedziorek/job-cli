@@ -268,7 +268,10 @@ class Job(LocationTemplate):
             parent_path = targets.keys()[targets.values().index(parent)] 
             old_path, name = os.path.split(path)
             link_path = os.path.join(parent_path, name)
-            os.symlink(path, link_path) 
+            try:
+                os.symlink(path, link_path) 
+            except:
+                print "Can't make a link %s %s" % (path, link_path)
 
         targets = self.render()
 
