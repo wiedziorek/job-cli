@@ -418,8 +418,11 @@ class Job(LocationTemplate):
         # print self.logger.level
 
 
-    def dump(self, postfix='.schema'):
-        """
+    def dump_local_templates(self, postfix='.schema'):
+        """ Saves all schames (hopefully) with modifications inside 
+            path_template/postfix.
+
+            Params: postfix - subfolder to save *.json with schemas (like .schame) 
         """
         def dumps_recursive(obj, objs, exclude_names={}):
             """ Puts strings containing json ready dicts recursively into obj. 
@@ -469,7 +472,7 @@ class Job(LocationTemplate):
 
 
 
-    def make(self):
+    def create(self):
         """ TODO: This is only fo testing purposes.
         """
 
@@ -492,7 +495,7 @@ class Job(LocationTemplate):
 
 if __name__ == "__main__":
 
-    job = Job(job_name='sandbox', debug_level=logging.DEBUG, root='/tmp/dada')
-    job.make()
-    job.dump()
+    job = Job(job_name='sandbox', debug_level=logging.INFO, root='/tmp/dada')
+    job.create()
+    job.dump_local_templates()
    
