@@ -201,6 +201,7 @@ class LocationTemplate(dict):
     parent_template  = None
     schema_type_name = None
     child_templates  = []
+    
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
         if schema and schema_type_name:
             super(LocationTemplate, self).__init__(schema[schema_type_name])
@@ -346,6 +347,7 @@ class LocationTemplate(dict):
         from glob import glob
         location = os.path.join(path, "*.json")
         files    = glob(location)
+        self.logger.debug("Schemas found: %s", files)
 
         for file in files:
             with open(file) as file_object:
@@ -358,7 +360,7 @@ class LocationTemplate(dict):
 
 
 class Job(LocationTemplate):
-    """ Hopfuly the only specialization of LocationTemplate class, 
+    """ Hopefuly the only specialization of LocationTemplate class, 
         which provides functionality only for parent 'job' diretory.
         Main purpos of this class is to find and load all templates found
         in a paths (JOBB_PATH envvar.) It should also select in future
@@ -379,7 +381,6 @@ class Job(LocationTemplate):
         schema_locations  = [split(realpath(__file__))[0]]
         schema_locations += os.getenv(jobb_path, "./").split(":")
 
-
         self.setup_logging(default_level=debug_level)
         self.logger.debug("schema_locations: %s", schema_locations)
 
@@ -387,7 +388,6 @@ class Job(LocationTemplate):
             schemas = self.load_schemas(join(directory, "schemas"))
             for k, v in schemas.items():
                 self.schema[k] = v
-
         super(Job, self).__init__(self.schema, "job", **kwargs)
 
         # NOTE: We might implement here local storage for schames, 
@@ -415,11 +415,10 @@ class Job(LocationTemplate):
 
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(default_level)
-        # print self.logger.level
 
 
     def dump_local_templates(self, postfix='.schema'):
-        """ Saves all schames (hopefully) with modifications inside 
+        """ Saves all schemes (hopefully) with modifications inside 
             path_template/postfix.
 
             Params: postfix - subfolder to save *.json with schemas (like .schame) 
@@ -491,11 +490,18 @@ class Job(LocationTemplate):
             device.set_ownership(path, **targets[path]['ownership'])
 
 
-
-
 if __name__ == "__main__":
 
-    job = Job(job_name='sandbox', debug_level=logging.INFO, root='/tmp/dada')
+    job_name  = 'sandbox'
+    job_group = 'user'
+    job_asset = 'symek2'
+
+    job = Job(job_name    = job_name, 
+              job_group   = job_group, 
+              job_asset   = job_asset, 
+              debug_level = logging.DEBUG, 
+              root        = '/tmp/dada')
+
     job.create()
     job.dump_local_templates()
    
