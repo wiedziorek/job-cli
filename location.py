@@ -2,6 +2,7 @@ import os
 import stat
 import json
 import abc
+import logging
 from ordereddict import OrderedDict
 
 
@@ -46,6 +47,29 @@ class DeviceDriver(object):
         include remote execution or fuse virtual file systems.
     """
     __metaclass__ = abc.ABCMeta
+    logger = None
+    def __init__(self):
+        """
+        """
+        self.setup_logging()
+
+    # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+    def setup_logging(self, default_path='logging.json', default_level=logging.INFO):
+        """ Setup logging configuration.
+        """
+        import logging.config
+        path = os.path.split(os.path.realpath(__file__))[0]
+        path = os.path.join(path, default_path)
+  
+        if os.path.exists(path):
+            with open(path, 'rt') as f:
+                config = json.load(f)
+            logging.config.dictConfig(config)
+        else:
+            logging.basicConfig(level=default_level)
+
+        self.logger = logging.getLogger(self.__class__.__name__)
+
     @abc.abstractmethod
     def make_dir(self, path):
         pass
@@ -69,27 +93,41 @@ class LocalDevice(DeviceDriver):
         super(LocalDevice, self).__init__()
 
     def make_dir(self, path):
+        """ Uses standard Python facility to create a directory tree.
+        """
         if os.path.exists(path):
-            print "Path exists: %s" % path
+            self.logger.warning("Path exists %s", path)
+            return False
+
         try:
             os.makedirs(path)
-            print "Making %s" % path
+            self.logger.info("Making %s", path)
+            return True
         except:
-            print "Couldn't make %s" %  path
+            self.logger.exception("Couldn't make %s",  path)
 
     def make_link(self, path, targets):
         parent = targets[path].parent_template
         assert parent != None
         # Find parent path by template object. 
         # TODO: Is it bug? There might be many parents paths?
-        parent_path = targets.keys()[targets.values().index(parent)] 
+        parent_path    = targets.keys()[targets.values().index(parent)] 
         old_path, name = os.path.split(path)
-        link_path = os.path.join(parent_path, name)
+        link_path      = os.path.join(parent_path, name)
+
+        if os.path.exists(link_path):
+            if os.path.islink(link_path):
+                self.logger.warning("Link exists %s", link_path)
+            else:
+                self.logger.warning("Path exists, so I can't make a link here %s", link_path)
+            return False
+
         try:
             os.symlink(path, link_path) 
-            print "Making symlink %s %s" % (path, link_path) 
+            self.logger.info("Making symlink %s %s", path, link_path) 
+            return True
         except:
-            print "Can't make a link %s %s" % (path, link_path)
+            self.logger.exception("Can't make a link %s %s", path, link_path)
 
     # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
     def remove_write_permissions(self, path):
@@ -304,7 +342,7 @@ class LocationTemplate(dict):
         from glob import glob
         location = os.path.join(path, "*.json")
         files    = glob(location)
-        
+
         for file in files:
             with open(file) as file_object:
                 obj  = json.load(file_object)
@@ -323,6 +361,7 @@ class Job(LocationTemplate):
         Device Driver to operate on disk / remote server.
 
     """
+    logger = None
     def __init__(self, jobb_path='JOBB_PATH', **kwargs):
         """ Initialize job by looking through JOBB_PATH locations and loading
             schema files from there. The later path in JOBB_PATH will override
@@ -342,6 +381,7 @@ class Job(LocationTemplate):
                 self.schema[k] = v
 
         super(Job, self).__init__(self.schema, "job", **kwargs)
+        self.setup_logging()
 
         # NOTE: We might implement here local storage for schames, 
         # but AFAIK this should be implemeted aside, so Job() 
@@ -349,6 +389,26 @@ class Job(LocationTemplate):
 
         # Asset diretory, as an exception, has no name
         self['names'] = [""]
+
+  
+
+    # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+    def setup_logging(self, default_path='logging.json', default_level=logging.INFO):
+        """ Setup logging configuration.
+        """
+        import logging.config
+        path = os.path.split(os.path.realpath(__file__))[0]
+        path = os.path.join(path, default_path)
+  
+        if os.path.exists(path):
+            with open(path, 'rt') as f:
+                config = json.load(f)
+            logging.config.dictConfig(config)
+        else:
+            logging.basicConfig(level=default_level)
+
+        self.logger = logging.getLogger(self.__class__.__name__)
+
 
     def dump(self, postfix='.schema'):
         """
@@ -418,7 +478,6 @@ class Job(LocationTemplate):
 if __name__ == "__main__":
 
     job = Job(job_name='sandbox', root='/tmp/dada')
-   
     job.make()
     job.dump()
    
