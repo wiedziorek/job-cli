@@ -48,10 +48,10 @@ class DeviceDriver(object):
     """
     __metaclass__ = abc.ABCMeta
     logger = None
-    def __init__(self):
+    def __init__(self, log_level=logging.INFO):
         """
         """
-        self.setup_logging()
+        self.setup_logging(default_level=log_level)
 
     # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
     def setup_logging(self, default_path='logging.json', default_level=logging.INFO):
@@ -69,6 +69,7 @@ class DeviceDriver(object):
             logging.basicConfig(level=default_level)
 
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(default_level)
 
     @abc.abstractmethod
     def make_dir(self, path):
@@ -89,8 +90,8 @@ class DeviceDriver(object):
 
 
 class LocalDevice(DeviceDriver):
-    def __init__(self):
-        super(LocalDevice, self).__init__()
+    def __init__(self, **kwargs):
+        super(LocalDevice, self).__init__(**kwargs)
 
     def make_dir(self, path):
         """ Uses standard Python facility to create a directory tree.
@@ -144,6 +145,7 @@ class LocalDevice(DeviceDriver):
 
         current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
         os.chmod(path, current_permissions & NO_WRITING)
+        self.logger.debug("remove_write_permissions: %s (%s)", path, current_permissions & NO_WRITING)
 
     def add_write_permissions(self, path, group=True, others=False):
         """ Set permissions flags according to provided params.
@@ -161,6 +163,7 @@ class LocalDevice(DeviceDriver):
 
         current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
         os.chmod(path, current_permissions | WRITING)
+        self.logger.debug("add_write_permissions: %s (%s)", path, current_permissions | WRITING)
 
     def set_ownership(self, path, user=None, group='artists'):
         """ Sets the ownership of a path. 
@@ -180,6 +183,7 @@ class LocalDevice(DeviceDriver):
 
         gid = getgrnam(group).gr_gid 
         os.chown(path, uid, gid)
+        self.logger.debug("set_ownership: %s (%s, %s)", path, uid, gid)
 
 
 class LocationTemplate(dict):
@@ -362,7 +366,7 @@ class Job(LocationTemplate):
 
     """
     logger = None
-    def __init__(self, jobb_path='JOBB_PATH', **kwargs):
+    def __init__(self, jobb_path='JOBB_PATH', debug_level=logging.INFO, **kwargs):
         """ Initialize job by looking through JOBB_PATH locations and loading
             schema files from there. The later path in JOBB_PATH will override
             the former schames. 
@@ -371,9 +375,13 @@ class Job(LocationTemplate):
             job = Job() (no child templates created)
             job.render() (children createde recursively)
         """
-        from os.path import join, split
-        schema_locations  = [join(split(__file__)[0])] 
+        from os.path import join, split, realpath
+        schema_locations  = [split(realpath(__file__))[0]]
         schema_locations += os.getenv(jobb_path, "./").split(":")
+
+
+        self.setup_logging(default_level=debug_level)
+        self.logger.debug("schema_locations: %s", schema_locations)
 
         for directory in schema_locations:
             schemas = self.load_schemas(join(directory, "schemas"))
@@ -381,7 +389,6 @@ class Job(LocationTemplate):
                 self.schema[k] = v
 
         super(Job, self).__init__(self.schema, "job", **kwargs)
-        self.setup_logging()
 
         # NOTE: We might implement here local storage for schames, 
         # but AFAIK this should be implemeted aside, so Job() 
@@ -390,10 +397,9 @@ class Job(LocationTemplate):
         # Asset diretory, as an exception, has no name
         self['names'] = [""]
 
-  
 
     # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-    def setup_logging(self, default_path='logging.json', default_level=logging.INFO):
+    def setup_logging(self, default_level=logging.INFO, default_path='logging.json'):
         """ Setup logging configuration.
         """
         import logging.config
@@ -408,6 +414,8 @@ class Job(LocationTemplate):
             logging.basicConfig(level=default_level)
 
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(default_level)
+        # print self.logger.level
 
 
     def dump(self, postfix='.schema'):
@@ -442,7 +450,12 @@ class Job(LocationTemplate):
 
         # FIXME: This shouldn't be here:
         if not os.path.isdir(prefix_path):
-            os.mkdir(prefix_path)
+            self.logger.warning("Schama location doesn't exists! %s", prefix_path)
+            try:
+                os.mkdir(prefix_path)
+                self.logger.info("Making local schema location %s", prefix_path)
+            except:
+                self.logger.exception("Can't make %s", prefix_path)
 
         # get json-strings recurcively:
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
@@ -451,6 +464,7 @@ class Job(LocationTemplate):
             path = os.path.join(prefix_path, schema + ".json")
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
+                self.logger.debug("Saving schema: %s", path)
 
 
 
@@ -460,7 +474,8 @@ class Job(LocationTemplate):
         """
 
         # TODO: Device driver should be pluggable
-        device = LocalDevice()
+        device = LocalDevice(log_level=self.logger.level)
+        device.logger.debug("Selecting device driver %s", device)
         targets = self.render()
 
         for path in targets:
@@ -477,7 +492,7 @@ class Job(LocationTemplate):
 
 if __name__ == "__main__":
 
-    job = Job(job_name='sandbox', root='/tmp/dada')
+    job = Job(job_name='sandbox', debug_level=logging.DEBUG, root='/tmp/dada')
     job.make()
     job.dump()
    
