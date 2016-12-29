@@ -60,9 +60,11 @@ def get_sub_command(options):
 def main():
     """
     """
-
+    from job.cli import setup_logger
+    logger = setup_logger("Job")
     options = docopt(__doc__, version='job version 0.0.1')
     command = get_sub_command(options)
+    logger.debug("Command found %s", command)
 
     if not command:
         return
