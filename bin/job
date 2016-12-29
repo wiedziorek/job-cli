@@ -1,39 +1,74 @@
 #!/usr/bin/python
+"""Jobb - better job.
 
-from os.path import realpath, dirname, join, exists
+Usage:
+  job
+  job create PROJECT [TYPE ASSET]
+  job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...]
+  job archive PROJECT 
+  job mine (set|remove) <x> <y> [--moored | --drifting]
+  job (-h | --help)
+  job --version
+
+Options:
+                Bez opcji == "job set sandbox user $USER"
+  -h --help     Show this screen.
+  --version     Show version.
+  --speed=<kn>  Speed in knots [default: 10].
+  --moored      Moored (anchored) mine.
+  --drifting    Drifting mine.
+"""
+
 import sys
+from os.path import realpath, dirname, join, exists
 
-job_path = dirname(realpath(__file__))
-job_path = dirname(job_path)
-sys.path.append(job_path)
+# Get root directory
+job_root_path = dirname(realpath(__file__))
+job_root_path = dirname(job_root_path)
+docopt_path   = join(job_root_path, "docopt")
+sys.path = [job_root_path] + sys.path
+sys.path.append(docopt_path)
 
+
+# Make sure we can import main module
 try:
     import job.cli
-except ImportError, e:
-    print e
-    sys.exit()
+    from docopt import docopt
+except ImportError, error:
+    print error
+    raise
+
+
+def get_sub_command(options):
+    """
+    """
+    import commands
+    from commands.base import Base
+    from inspect import getmembers, isclass
+    command = None  
+    for k, v in options.iteritems():
+        if not hasattr(commands, k):
+            continue
+        if not v: 
+            continue
+        module = getattr(commands, k) 
+        return [cls[1] for cls in getmembers(module, isclass) if cls[0] != "Base"][0]
+    return
+    
 
 
 def main():
-    job_name  = 'sandbox'
-    job_group = 'user'
-    job_asset = 'symek2'
+    """
+    """
 
-    from logging import DEBUG, INFO
-    from job.cli import Job
+    options = docopt(__doc__, version='job version 0.0.1')
+    command = get_sub_command(options)
 
-    job = Job(job_name    = job_name, 
-              job_group   = job_group, 
-              job_asset   = job_asset, 
-              log_level   = INFO, 
-              root        = '/tmp/dada')
+    if not command:
+        return
 
-    job.create()
-    job.dump_local_templates()
-
-
-
-
+    command = command(options)
+    command.run()
 
 
 if __name__ == "__main__": main()
