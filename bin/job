@@ -1,0 +1,39 @@
+#!/usr/bin/python
+
+from os.path import realpath, dirname, join, exists
+import sys
+
+job_path = dirname(realpath(__file__))
+job_path = dirname(job_path)
+sys.path.append(job_path)
+
+try:
+    import job.cli
+except ImportError, e:
+    print e
+    sys.exit()
+
+
+def main():
+    job_name  = 'sandbox'
+    job_group = 'user'
+    job_asset = 'symek2'
+
+    from logging import DEBUG, INFO
+    from job.cli import Job
+
+    job = Job(job_name    = job_name, 
+              job_group   = job_group, 
+              job_asset   = job_asset, 
+              log_level   = INFO, 
+              root        = '/tmp/dada')
+
+    job.create()
+    job.dump_local_templates()
+
+
+
+
+
+
+if __name__ == "__main__": main()

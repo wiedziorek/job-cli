@@ -6,6 +6,9 @@ import logging
 from ordereddict import OrderedDict
 
 
+JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
+
+
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
 def setup_logger(name, preference_file = 'logging.json', 
                        log_level       =  logging.INFO):
@@ -408,7 +411,7 @@ class Job(LocationTemplate):
 
     """
     logger = None
-    def __init__(self, jobb_path='JOBB_PATH', log_level=logging.INFO, **kwargs):
+    def __init__(self, log_level=logging.INFO, **kwargs):
         """ Initialize job by looking through JOBB_PATH locations and loading
             schema files from there. The later path in JOBB_PATH will override
             the former schames. 
@@ -417,13 +420,16 @@ class Job(LocationTemplate):
             job = Job() (no child templates created)
             job.render() (children createde recursively)
         """
-        from os.path import join, split, realpath
+        from os.path import join, split, realpath, dirname
 
         name = self.__class__.__name__
         self.logger = setup_logger(name, log_level=log_level)
 
-        schema_locations  = [split(realpath(__file__))[0]]
-        # schema_locations += os.getenv(jobb_path, "./").split(":")
+        schema_locations  = [dirname(realpath(__file__))]
+
+        # JOB_TEMPLATE_PATH_ENV may store store additional locations of schema folders.
+        if os.getenv(JOB_TEMPLATE_PATH_ENV, None):
+            schema_locations += os.getenv(JOB_TEMPLATE_PATH_ENV).split(":")
 
         self.logger.debug("schema_locations: %s", schema_locations)
 
@@ -523,7 +529,7 @@ if __name__ == "__main__":
     job = Job(job_name    = job_name, 
               job_group   = job_group, 
               job_asset   = job_asset, 
-              log_level   = logging.DEBUG, 
+              log_level   = logging.INFO, 
               root        = '/tmp/dada')
 
     job.create()
