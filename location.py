@@ -6,6 +6,29 @@ import logging
 from ordereddict import OrderedDict
 
 
+# https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+def setup_logger(name, preference_file = 'logging.json', 
+                       log_level       =  logging.INFO):
+    """ Setup logging configuration.
+    """
+    from os.path import join, split, realpath, dirname, exists
+    import logging.config
+
+    _path = dirname(realpath(__file__))
+    _path = join(_path, preference_file)
+
+    if exists(_path):
+        with open(_path, 'rt') as file:
+            config = json.load(file)
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=log_level)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
+
+    return logger
+
 
 class RenderedLocation(dict):
     """ This is basic database to propagete (render) all 
@@ -47,30 +70,6 @@ class DeviceDriver(object):
         include remote execution or fuse virtual file systems.
     """
     __metaclass__ = abc.ABCMeta
-    logger = None
-    def __init__(self, log_level=logging.INFO):
-        """
-        """
-        self.setup_logging(default_level=log_level)
-
-    # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-    def setup_logging(self, default_path='logging.json', default_level=logging.INFO):
-        """ Setup logging configuration.
-        """
-        import logging.config
-        path = os.path.split(os.path.realpath(__file__))[0]
-        path = os.path.join(path, default_path)
-  
-        if os.path.exists(path):
-            with open(path, 'rt') as f:
-                config = json.load(f)
-            logging.config.dictConfig(config)
-        else:
-            logging.basicConfig(level=default_level)
-
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(default_level)
-
     @abc.abstractmethod
     def make_dir(self, path):
         pass
@@ -90,8 +89,11 @@ class DeviceDriver(object):
 
 
 class LocalDevice(DeviceDriver):
-    def __init__(self, **kwargs):
+    logger = None
+    def __init__(self, log_level=logging.INFO, **kwargs):
         super(LocalDevice, self).__init__(**kwargs)
+        name = self.__class__.__name__
+        self.logger = setup_logger(name, log_level=log_level)
 
     def make_dir(self, path):
         """ Uses standard Python facility to create a directory tree.
@@ -203,11 +205,13 @@ class LocationTemplate(dict):
     child_templates  = []
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
+
         if schema and schema_type_name:
             super(LocationTemplate, self).__init__(schema[schema_type_name])
 
         self.parent_template = parent
         self.schema_type_name = schema_type_name
+
         for k, v in kwargs.items():
             self[k] = v
 
@@ -223,6 +227,13 @@ class LocationTemplate(dict):
             if self.parent_template == None:
                 raise KeyError, "No key found in self or parents: %s" % key
             return self.parent_template[key]
+
+    def get_root_template(self):
+        """ Return Job template which is a root parent.
+        """
+        if self.parent_template:
+            return self.parent_template.get_root_template()
+        return self
 
 
     def expand_path_template(self, template=None):
@@ -241,13 +252,16 @@ class LocationTemplate(dict):
         for element in consists:
             # all but first character is valid
             keyword = element[1:]
-            if element.startswith("@"):
-                # assert keyword in self.keys() # This won't work with nested 
+            if element.startswith("@"): 
                 value = self[keyword]
             # We support also env var. which is probably bad idea...
             elif element.startswith("$"):
                 value = os.getenv(keyword, None)
                 assert value != None
+                raise
+                self.logger.exception("Path element %s can't be expanded.", element)
+            else:
+                value = element
 
             expanded_directores += [value]
 
@@ -269,7 +283,9 @@ class LocationTemplate(dict):
             }
         """
 
-        schema = LocationTemplate({}, None)
+        schema = LocationTemplate(schema={}, 
+                                  schema_type_name=None,
+                                  parent=self)
         schema['sub_dirs'] = []
         if schema_dict['options']:
             for k, v in schema_dict['options'].items():
@@ -288,7 +304,22 @@ class LocationTemplate(dict):
             templetes as values to use this information down the stream.
             {'/some/path': LocationTemplate(), ...}
         """
+        def valid_variables_expention(path):
+            """ We need to make sure all var. were expanded, and raise
+                an exception if not.
+            """
+            try:
+                if '$' in path:
+                    raise EnvironmentError(path)
+            except EnvironmentError, e: 
+                self.get_root_template().logger.exception("Wrong expansion %s", e)
+                return False
+            return True
+
+
         from os.path import join, expandvars
+        from sys import exit
+
         targets = OrderedDict()
 
         if clear_storage:
@@ -303,7 +334,10 @@ class LocationTemplate(dict):
             root = _root
 
         for name in self['names']:
-            path = expandvars(join(root, name))
+            path = join(root, name)
+            path = expandvars(path)
+            if not valid_variables_expention(path):
+                exit()  
             targets[path] = self
 
         if not recursive:
@@ -323,7 +357,10 @@ class LocationTemplate(dict):
                 # print "Expanding schema with %s" % sub_template   
 
             # Create subtemplate and process...
-            location = LocationTemplate(self.schema, sub_template['name'], parent=self)
+            location = LocationTemplate(schema           = self.schema, 
+                                        schema_type_name = sub_template['name'], 
+                                        parent           = self)
+
             self.child_templates += [location]
             subtargets = location.render(path, parent=self)
 
@@ -368,7 +405,7 @@ class Job(LocationTemplate):
 
     """
     logger = None
-    def __init__(self, jobb_path='JOBB_PATH', debug_level=logging.INFO, **kwargs):
+    def __init__(self, jobb_path='JOBB_PATH', log_level=logging.INFO, **kwargs):
         """ Initialize job by looking through JOBB_PATH locations and loading
             schema files from there. The later path in JOBB_PATH will override
             the former schames. 
@@ -378,16 +415,20 @@ class Job(LocationTemplate):
             job.render() (children createde recursively)
         """
         from os.path import join, split, realpath
-        schema_locations  = [split(realpath(__file__))[0]]
-        schema_locations += os.getenv(jobb_path, "./").split(":")
 
-        self.setup_logging(default_level=debug_level)
+        name = self.__class__.__name__
+        self.logger = setup_logger(name, log_level=log_level)
+
+        schema_locations  = [split(realpath(__file__))[0]]
+        # schema_locations += os.getenv(jobb_path, "./").split(":")
+
         self.logger.debug("schema_locations: %s", schema_locations)
 
         for directory in schema_locations:
             schemas = self.load_schemas(join(directory, "schemas"))
             for k, v in schemas.items():
                 self.schema[k] = v
+
         super(Job, self).__init__(self.schema, "job", **kwargs)
 
         # NOTE: We might implement here local storage for schames, 
@@ -396,25 +437,6 @@ class Job(LocationTemplate):
 
         # Asset diretory, as an exception, has no name
         self['names'] = [""]
-
-
-    # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-    def setup_logging(self, default_level=logging.INFO, default_path='logging.json'):
-        """ Setup logging configuration.
-        """
-        import logging.config
-        path = os.path.split(os.path.realpath(__file__))[0]
-        path = os.path.join(path, default_path)
-  
-        if os.path.exists(path):
-            with open(path, 'rt') as f:
-                config = json.load(f)
-            logging.config.dictConfig(config)
-        else:
-            logging.basicConfig(level=default_level)
-
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(default_level)
 
 
     def dump_local_templates(self, postfix='.schema'):
@@ -470,7 +492,6 @@ class Job(LocationTemplate):
 
 
 
-
     def create(self):
         """ TODO: This is only fo testing purposes.
         """
@@ -499,7 +520,7 @@ if __name__ == "__main__":
     job = Job(job_name    = job_name, 
               job_group   = job_group, 
               job_asset   = job_asset, 
-              debug_level = logging.DEBUG, 
+              log_level   = logging.DEBUG, 
               root        = '/tmp/dada')
 
     job.create()
