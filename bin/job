@@ -40,23 +40,30 @@ except ImportError, error:
 
 
 def get_sub_command(options):
-    """
+    """ Gets a command.module.Class which coresponds to docopt
+	subcommand (first argument).
+
+	Params:
+		options - dictionary of command line options
+		          as returned by docopt.
+	Returns:
+		Class object from command.module (not initilized).
     """
     import commands
     from commands.base import Base
     from inspect import getmembers, isclass
-    command = None  
+    subcommand = None  
     for k, v in options.iteritems():
-        if not hasattr(commands, k):
-            continue
-        if not v: 
-            continue
+        if not hasattr(commands, k) or not v:
+          continue
         module = getattr(commands, k) 
-        return [cls[1] for cls in getmembers(module, isclass) if cls[0] != "Base"][0]
+        candidates = [cls[1] for cls in getmembers(module, isclass)]
+	# We are only interested in classes derived from Base:
+        subcommand = [cls for cls in candidates if issubclass(cls, Base) \
+                      and cls != Base][0]
+        return subcommand
     return
     
-
-
 def main():
     """
     """
