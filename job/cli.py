@@ -209,7 +209,7 @@ class LocationTemplate(dict):
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
 
-        if schema and schema_type_name:
+        if schema and schema_type_name and schema_type_name in schema:
             super(LocationTemplate, self).__init__(schema[schema_type_name])
 
         self.parent_template = parent
