@@ -304,7 +304,7 @@ class LocationTemplate(dict):
             templetes as values to use this information down the stream.
             {'/some/path': LocationTemplate(), ...}
         """
-        def valid_variables_expention(path):
+        def valid_variables_expantion(path):
             """ We need to make sure all var. were expanded, and raise
                 an exception if not.
             """
@@ -333,10 +333,13 @@ class LocationTemplate(dict):
         else:
             root = _root
 
+        # Add paths to targets dictionary
+        # We expand possible env variables and raise on error.
         for name in self['names']:
             path = join(root, name)
             path = expandvars(path)
-            if not valid_variables_expention(path):
+            if not valid_variables_expantion(path):
+                self.get_root_template().logger.info("Job has to quit due to errors...")
                 exit()  
             targets[path] = self
 
