@@ -288,7 +288,8 @@ class LocationTemplate(dict):
         from os.path import join
 
         if not template:
-            # This will raise an exception if no path_template has been found here or up.
+            # This will raise an exception if 
+            # no path_template has been found here or up.
             template = self['path_template']
 
         consists = template.split("/")
@@ -306,7 +307,7 @@ class LocationTemplate(dict):
                 value = element
 
             if not value:
-                self.logger.exception("Couldn't resolve template's value: '%s' - %s", \
+                self.logger.exception("Couldn't resolve '%s' inside template: '%s'", \
                     element, template)
                 raise EnvironmentError
 
