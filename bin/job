@@ -51,6 +51,9 @@ def get_sub_command(options):
                       as returned by docopt.
         Returns:
             Class object from command.module (not initilized).
+    
+        CLI setup based on https://stormpath.com/blog/\
+        building-simple-cli-interfaces-in-python
     """
     import commands
     from commands.base import Base
@@ -68,8 +71,6 @@ def get_sub_command(options):
     return
     
 def main():
-    """
-    """
     from job.cli import setup_logger
     logger = setup_logger("Job")
     options = docopt(__doc__, version='job version 0.0.1')
@@ -78,7 +79,7 @@ def main():
 
     if not command:
         return
-        
+
     command = command(options)
     command.run()
 
