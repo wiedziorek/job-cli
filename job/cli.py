@@ -177,7 +177,7 @@ class LocalDevice(DeviceDriver):
             WRITING = WRITING | stat.S_IWOTH
 
         current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
-        
+
         try:
             os.chmod(path, current_permissions | WRITING)
         except:
@@ -186,25 +186,52 @@ class LocalDevice(DeviceDriver):
 
         self.logger.debug("add_write_permissions: %s (%s)", path, current_permissions | WRITING)
 
-    def set_ownership(self, path, user=None, group='artists'):
+    def set_ownership(self, path, user=None, group=None):
         """ Sets the ownership of a path. 
 
         Params:
             user:  User string (None means no change)
-            group: Group string (default 'artists')
+            group: Group string (None means no change)
         """
         from grp import getgrnam
         from pwd import getpwnam, getpwuid
         from getpass import getuser
-        
-        if user:
-            uid  = getpwnam(user).pw_uid
-        else:
-            uid =  os.stat(path).st_uid
 
-        gid = getgrnam(group).gr_gid 
-        os.chown(path, uid, gid)
+        def get_user_id(path, user):
+            """ """
+            if not user:
+                return os.stat(path).st_uid
+            try: 
+                return getpwnam(user).pw_uid
+            except:
+                self.logger.exception("Can't find specified user %s", user)
+                raise OSError
+
+        def get_group_id(path, group):
+            """"""
+            if not group:
+                return os.stat(path).st_gid
+            try: 
+                return getgrnam(group).gr_gid 
+            except:
+                self.logger.exception("Can't find specified group %s", group)
+                raise OSError
+
+        # This may happen due to 'upper' logic...
+        if not user and not group: 
+            return False
+        # 
+        uid = get_user_id(path, user)
+        gid = get_group_id(path, group)
+        #
+        try:
+            os.chown(path, uid, gid)
+        except:
+            self.logger.exception("Can't change ownership for %s", path)
+            raise OSError
+
         self.logger.debug("set_ownership: %s (%s, %s)", path, uid, gid)
+        return True
 
 
 class LocationTemplate(dict):
