@@ -46,7 +46,7 @@ class CreateJobTemplate(Base):
             """
             job_asset_name_list = []
             job_asset_range = parse_asset_name(job_asset_name)
-            assert len(job_asset_range) <= 2
+            assert not job_asset_range or len(job_asset_range) == 2
 
             # !!! inclusive 
             if len(job_asset_range) == 2:
