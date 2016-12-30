@@ -285,14 +285,6 @@ class LocationTemplate(dict):
     def expand_path_template(self, template=None):
         """ This should be replaced with more elaboreted and safe template renderer. 
         """
-        def get_environ_variable(variable):
-            """ Raise exception of failer. """
-            try:
-                return os.environ[keyword]
-            except:
-                self.logger.exception("Path element %s can't be expanded.", element)
-                raise EnvironmentError
-
         from os.path import join
 
         if not template:
@@ -309,13 +301,13 @@ class LocationTemplate(dict):
                 value = self[keyword]
             # We support also env var. which is probably bad idea...
             elif element.startswith("$"):
-                value = get_environ_variable(keyword)
+                value = os.getenv(keyword, None)
             else: 
                 value = element
 
             if not value:
-                self.logger.exception("Template element has no value: '%s' - %s", \
-                    keyword, template)
+                self.logger.exception("Couldn't resolve template's value: '%s' - %s", \
+                    element, template)
                 raise EnvironmentError
 
             expanded_directores += [value]
