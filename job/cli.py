@@ -285,11 +285,18 @@ class LocationTemplate(dict):
     def expand_path_template(self, template=None):
         """ This should be replaced with more elaboreted and safe template renderer. 
         """
+        def get_environ_variable(variable):
+            """ Raise exception of failer. """
+            try:
+                return os.environ[keyword]
+            except:
+                self.logger.exception("Path element %s can't be expanded.", element)
+                raise EnvironmentError
+
         from os.path import join
 
         if not template:
-            # This will raise an exception if no path_template has been found here
-            # or up.
+            # This will raise an exception if no path_template has been found here or up.
             template = self['path_template']
 
         consists = template.split("/")
@@ -302,17 +309,13 @@ class LocationTemplate(dict):
                 value = self[keyword]
             # We support also env var. which is probably bad idea...
             elif element.startswith("$"):
-                value = os.getenv(keyword, None)
-                assert value != None
-                raise
-                self.logger.exception("Path element %s can't be expanded.", element)
-            else:
+                value = get_environ_variable(keyword)
+            else: 
                 value = element
-
+                
             expanded_directores += [value]
 
         path = join(*expanded_directores)
-
         return path
 
     def extend_schema_with_adhoc_definition(self, schema_dict):
