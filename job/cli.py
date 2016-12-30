@@ -101,16 +101,20 @@ class LocalDevice(DeviceDriver):
     def make_dir(self, path):
         """ Uses standard Python facility to create a directory tree.
         """
+        # TODO: How to process errors, 
+        # TODO: How to implement more sofisticated error treatment
+        # like: If path exists, and it's a link do A, if it's not a link do B?
         if os.path.exists(path):
-            self.logger.warning("Path exists %s", path)
+            self.logger.warning("Path exists, can't proceed %s", path)
             return False
-
+        # same as above.
         try:
             os.makedirs(path)
             self.logger.info("Making %s", path)
             return True
-        except:
+        except OSError, e:
             self.logger.exception("Couldn't make %s",  path)
+            raise OSError
 
     def make_link(self, path, targets):
         parent = targets[path].parent_template
@@ -134,6 +138,7 @@ class LocalDevice(DeviceDriver):
             return True
         except:
             self.logger.exception("Can't make a link %s %s", path, link_path)
+            raise OSError
 
     # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
     def remove_write_permissions(self, path):
@@ -149,7 +154,12 @@ class LocalDevice(DeviceDriver):
         NO_WRITING = NO_USER_WRITING & NO_GROUP_WRITING & NO_OTHER_WRITING
 
         current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
-        os.chmod(path, current_permissions & NO_WRITING)
+        try:
+            os.chmod(path, current_permissions & NO_WRITING)
+        except:
+            self.logger.exception("Can't remove write permission from %s", path)
+            raise OSError
+
         self.logger.debug("remove_write_permissions: %s (%s)", path, current_permissions & NO_WRITING)
 
     def add_write_permissions(self, path, group=True, others=False):
@@ -167,7 +177,13 @@ class LocalDevice(DeviceDriver):
             WRITING = WRITING | stat.S_IWOTH
 
         current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
-        os.chmod(path, current_permissions | WRITING)
+        
+        try:
+            os.chmod(path, current_permissions | WRITING)
+        except:
+            self.logger.exception("Can't add write permission for %s", path)
+            raise OSError
+
         self.logger.debug("add_write_permissions: %s (%s)", path, current_permissions | WRITING)
 
     def set_ownership(self, path, user=None, group='artists'):
