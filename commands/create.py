@@ -47,7 +47,10 @@ class CreateJobTemplate(Base):
             job_asset_name_list = []
             job_asset_range = parse_asset_name(job_asset_name)
             assert len(job_asset_range) <= 2
-            job_asset_range[1] += 1 # !!!
+
+            # !!! inclusive 
+            if len(job_asset_range) == 2:
+                job_asset_range[1] += 1 # !!!
 
             if job_asset_range:
                 job_asset_base = job_asset_name.split("[")[0] # Correct assumption?
