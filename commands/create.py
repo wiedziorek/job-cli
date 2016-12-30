@@ -34,7 +34,7 @@ class CreateJobTemplate(Base):
                 return [int(x) for x in list(sequence[0])]
             return []
 
-        def create_job_asset_range(job_asset_name):
+        def create_job_asset_range(job_asset_name, number_mult=10, zeros=4):
             """ Generates a list of asset names from asset name expression:
                 asset_name[1-10]
 
@@ -56,8 +56,8 @@ class CreateJobTemplate(Base):
                 job_asset_base = job_asset_name.split("[")[0] # Correct assumption?
                 for asset_num in range(*job_asset_range):
                     # Should we allow to customize it? Place for preferences?
-                    asset_num *= 10
-                    new_job_asset_name = job_asset_base + str(asset_num).zfill(4)
+                    asset_num *= number_mult
+                    new_job_asset_name = job_asset_base + str(asset_num).zfill(zeros)
                     job_asset_name_list += [new_job_asset_name]
 
             else:
@@ -91,12 +91,15 @@ class CreateJobTemplate(Base):
             kwargs['root']       = root
 
         # Asset may contain range expression which we might want to expand:
+        job_group_range = create_job_asset_range(job_group, number_mult=1, zeros=2)
         job_asset_range = create_job_asset_range(job_asset)
 
-        for asset in job_asset_range:
-            kwargs['job_asset'] = asset
-            self.job = Job(**kwargs)
-            self.job.create()
+        for group in job_group_range:
+            kwargs['job_group'] = group
+            for asset in job_asset_range:
+                kwargs['job_asset'] = asset
+                self.job = Job(**kwargs)
+                self.job.create()
  
     def run(self):
         from job.cli import setup_logger
