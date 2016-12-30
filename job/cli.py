@@ -312,7 +312,12 @@ class LocationTemplate(dict):
                 value = get_environ_variable(keyword)
             else: 
                 value = element
-                
+
+            if not value:
+                self.logger.exception("Template element has no value: '%s' - %s", \
+                    keyword, template)
+                raise EnvironmentError
+
             expanded_directores += [value]
 
         path = join(*expanded_directores)
