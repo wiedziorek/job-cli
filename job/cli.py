@@ -492,11 +492,13 @@ class Job(LocationTemplate):
         self['names'] = [""]
 
 
-    def dump_local_templates(self, postfix='.schema'):
+    def dump_local_templates(self, schema_key='job', postfix='.schema'):
         """ Saves all schemes (hopefully) with modifications inside 
             path_template/postfix.
 
-            Params: postfix - subfolder to save *.json with schemas (like .schame) 
+            Params: 
+                schema_key: name of the path template used to generate prefix
+                postfix:    subfolder to save *.json with schemas (usually .schema) 
         """
         def dumps_recursive(obj, objs, exclude_names={}):
             """ Puts strings containing json ready dicts recursively into obj. 
@@ -506,7 +508,6 @@ class Job(LocationTemplate):
 
             if obj.schema_type_name not in exclude_names:
                 objs[obj.schema_type_name] = str(obj)
-            
 
         # TODO: Should we save schema' sources or recreate schames from objects?
         # Clear storage before rendering, so we make sure all possible changes in templates
@@ -520,8 +521,11 @@ class Job(LocationTemplate):
                 if inline['type'] == 'location':
                     exclude_inlines += [inline['name']]
 
-        # path 
-        prefix_path = self.expand_path_template()
+        # Local schemas path are defined in project's schema
+        # and are selected here among many provided by key name: 
+        local_schema_template = self['local_schema_path'][schema_key]
+
+        prefix_path = self.expand_path_template(template=local_schema_template)
         prefix_path = os.path.join(prefix_path, postfix)
         prefix_path = os.path.expandvars(prefix_path)
 
@@ -542,8 +546,6 @@ class Job(LocationTemplate):
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
-
-
 
     def create(self):
         """ TODO: This is only fo testing purposes.

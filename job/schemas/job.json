@@ -3,7 +3,7 @@
     "permission": {"group": false,
     			  "others": false}, 
      "ownership": {"user" : null, 
-     			  "group": "artists"},
+     			  "group": null},
     "job_asset": "$USER", 
     "sub_dirs": [{"name": "camera", "type": "template", "options": null}, 
     	         {"name": "render", "type": "template", "options": null}],
@@ -14,5 +14,8 @@
     "link_target": null, 
     "root": "/PROD/dev", 
     "job_name": "sandbox",
-    "path_template": "@root/@job_name/@job_group/@job_asset"
+    "path_template": "@root/@job_name/@job_group/@job_asset",
+    "local_schema_path": {"asset": "@root/@job_name/@job_group/@job_asset",
+                          "group": "@root/@job_name/@job_group",
+                          "job"  : "@root/@job_name"}
 }
