@@ -4,7 +4,6 @@ class CreateJobTemplate(Base):
     """ Sub command which performs creation of disk directories
        based on schemas.
     """
-    job    = None
     logger = None
 
     def get_log_level_from_options(self):
@@ -21,7 +20,7 @@ class CreateJobTemplate(Base):
                 pass
         return log_level
 
-    def get_local_schemas(self):
+    def get_local_schemas(self, job):
         """ Once we know where to look for we may want to refer to
             local schema copy if the job/group/asset, as they might
             by edited independly from defualt schemas or any other
@@ -30,15 +29,14 @@ class CreateJobTemplate(Base):
             Parms : job - object to retrieve local_schema_path templates.
             Return: list of additional schema locations 
         """
-        assert self.job
         # This is ugly, should we move it to Job()?
-        job_schema   = self.job['local_schema_path']['job']
-        group_schema = self.job['local_schema_path']['group']
-        asset_schema = self.job['local_schema_path']['asset']
+        job_schema   = job['local_schema_path']['job']
+        group_schema = job['local_schema_path']['group']
+        asset_schema = job['local_schema_path']['asset']
 
-        local_schema_path  = [self.job.expand_path_template(template=job_schema)]
-        local_schema_path += [self.job.expand_path_template(template=group_schema)]
-        local_schema_path += [self.job.expand_path_template(template=asset_schema)]
+        local_schema_path  = [job.expand_path_template(template=job_schema)]
+        local_schema_path += [job.expand_path_template(template=group_schema)]
+        local_schema_path += [job.expand_path_template(template=asset_schema)]
 
         return local_schema_path
  
@@ -87,7 +85,7 @@ class CreateJobTemplate(Base):
             return job_asset_name_list
             
 
-        from job.cli import Job, setup_logger, JOB_TEMPLATE_PATH_ENV
+        from job.cli import Job, setup_logger
         from os import environ
         log_level = self.get_log_level_from_options()
 
@@ -121,24 +119,25 @@ class CreateJobTemplate(Base):
             kwargs['job_group'] = group
             for asset in job_asset_range:
                 kwargs['job_asset'] = asset
-                self.job = Job(**kwargs)
+                job = Job(**kwargs)
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:
                 if not self.options['--no_local_schema']:
-                    local_schema_path = self.get_local_schemas()
-                    self.job.load_schemas(local_schema_path)
-                    super(Job, self.job).__init__(self.job.schema, "job", **kwargs)
-                self.job.create()
+                    local_schema_path = self.get_local_schemas(job)
+                    job.load_schemas(local_schema_path)
+                    super(Job, job).__init__(job.schema, "job", **kwargs)
+                job.create()
+
+        return job
  
     def run(self):
-        from job.cli import Job
-        # self.logger = setup_logger("Job", self.get_log_level())
-
+        """ Entry point for sub command.
+        """
 
         if self.options['create']:
-            self.create_command()
-        if self.job and not self.options['--no_local_schema']:
-            self.job.dump_local_templates()
+            job = self.create_command()
+        if job and not self.options['--no_local_schema']:
+            job.dump_local_templates()
 
 
 
