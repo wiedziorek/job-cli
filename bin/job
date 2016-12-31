@@ -18,7 +18,7 @@ Options:
   --moored              Moored (anchored) mine.
   --drifting            Drifting mine.
   --log_level=<level>   Log level of subcommands (INFO | DEBUG)
-  --no_local_schema     Disable savig local copy of schema on 'create' 
+  --no_local_schema     Disable savig/loading local copy of schema on 'create' 
   --root=<prefix>       Overrides root directory (only for debuging purposes!) 
 """
 

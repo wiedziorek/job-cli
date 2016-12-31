@@ -462,7 +462,7 @@ class Job(LocationTemplate):
 
             Note: Sub templates are created lazy on path rendering.
             job = Job() (no child templates created)
-            job.render() (children createde recursively)
+            job.render() (children created recursively)
         """
         from os.path import join, split, realpath, dirname
 
@@ -476,21 +476,29 @@ class Job(LocationTemplate):
             schema_locations += os.getenv(JOB_TEMPLATE_PATH_ENV).split(":")
 
         self.logger.debug("schema_locations: %s", schema_locations)
-
-        for directory in schema_locations:
-            schemas = self.load_schemas(join(directory, "schemas"))
-            for k, v in schemas.items():
-                self.schema[k] = v
-
+        self.load_schemas(schema_locations)
         super(Job, self).__init__(self.schema, "job", **kwargs)
 
         # NOTE: We might implement here local storage for schames, 
         # but AFAIK this should be implemeted aside, so Job() 
         # just except paths to directories.
 
-        # Asset diretory, as an exception, has no name
-        self['names'] = [""]
-
+    def load_schemas(self, schema_locations):
+        """
+        """
+        from os.path import join
+        for directory in schema_locations:
+            # First pass for default schemas and studio wide
+            # as defined in a variable pointed by JOB_TEMPLATE_PATH_ENV
+            # (see above)
+            schemas = super(Job, self).load_schemas(join(directory, "schemas"))
+            for k, v in schemas.items():
+                self.schema[k] = v
+            # Second pass for .hidden folder usually found inside projects
+            schemas = super(Job, self).load_schemas(join(directory, ".schema"))
+            for k, v in schemas.items():
+                self.schema[k] = v
+        return True
 
     def dump_local_templates(self, schema_key='job', postfix='.schema'):
         """ Saves all schemes (hopefully) with modifications inside 

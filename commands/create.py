@@ -20,6 +20,27 @@ class CreateJobTemplate(Base):
             except:
                 pass
         return log_level
+
+    def get_local_schemas(self):
+        """ Once we know where to look for we may want to refer to
+            local schema copy if the job/group/asset, as they might
+            by edited independly from defualt schemas or any other
+            present in environ varible JOB_TEMPLATE_PATH.
+
+            Parms : job - object to retrieve local_schema_path templates.
+            Return: list of additional schema locations 
+        """
+        assert self.job
+        # This is ugly, should we move it to Job()?
+        job_schema   = self.job['local_schema_path']['job']
+        group_schema = self.job['local_schema_path']['group']
+        asset_schema = self.job['local_schema_path']['asset']
+
+        local_schema_path  = [self.job.expand_path_template(template=job_schema)]
+        local_schema_path += [self.job.expand_path_template(template=group_schema)]
+        local_schema_path += [self.job.expand_path_template(template=asset_schema)]
+
+        return local_schema_path
  
     def create_command(self):  
         """
@@ -66,7 +87,8 @@ class CreateJobTemplate(Base):
             return job_asset_name_list
             
 
-        from job.cli import Job, setup_logger
+        from job.cli import Job, setup_logger, JOB_TEMPLATE_PATH_ENV
+        from os import environ
         log_level = self.get_log_level_from_options()
 
         job_name  = self.options['PROJECT']
@@ -82,13 +104,14 @@ class CreateJobTemplate(Base):
             job_group = job_name
             job_asset = job_name
 
+
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
         kwargs['job_name']  = job_name
         kwargs['job_group'] = job_group
         kwargs['log_level'] = log_level
         if root:
-            kwargs['root']       = root
+            kwargs['root']  = root
 
         # Asset may contain range expression which we might want to expand:
         job_group_range = create_job_asset_range(job_group, number_mult=1, zeros=2)
@@ -99,13 +122,28 @@ class CreateJobTemplate(Base):
             for asset in job_asset_range:
                 kwargs['job_asset'] = asset
                 self.job = Job(**kwargs)
+                # We need to reinitialize Job() in case we want to find
+                # local schemas:
+                if not self.options['--no_local_schema']:
+                    local_schema_path = self.get_local_schemas()
+                    self.job.load_schemas(local_schema_path)
+                    super(Job, self.job).__init__(self.job.schema, "job", **kwargs)
                 self.job.create()
  
     def run(self):
-        from job.cli import setup_logger
+        from job.cli import Job
         # self.logger = setup_logger("Job", self.get_log_level())
+
+
         if self.options['create']:
             self.create_command()
         if self.job and not self.options['--no_local_schema']:
             self.job.dump_local_templates()
+
+
+
+
+
+
+
       
