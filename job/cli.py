@@ -2,8 +2,14 @@ import os
 import stat
 import json
 import abc
-import logging
-from ordereddict import OrderedDict
+import logging\
+
+
+# Python 2.6 compatibility:
+try:
+    from collections import OrderedDict, defaultdict
+except ImportError:
+    from ordereddict import OrderedDict
 
 
 JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
