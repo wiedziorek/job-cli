@@ -37,18 +37,18 @@
     },
 
     "loggers": {
-        "Job": {
+        "JobTemplate": {
             "level": "ERROR",
             "handlers": ["console", "error_file_handler" ],
             "propagate": "no"
         },
 
-        "Job": {
+        "JobTemplate": {
             "level": "DEBUG",
             "handlers": ["console"],
             "propagate": "no"
         },
-        "Job": {
+        "JobTemplate": {
             "level": "INFO",
             "handlers": ["console", "info_file_handler" ],
             "propagate": "no"
