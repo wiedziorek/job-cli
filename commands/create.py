@@ -85,7 +85,7 @@ class CreateJobTemplate(Base):
             return job_asset_name_list
             
 
-        from job.cli import Job, setup_logger
+        from job.cli import JobTemplate, setup_logger
         from os import environ
         log_level = self.get_log_level_from_options()
 
@@ -119,13 +119,13 @@ class CreateJobTemplate(Base):
             kwargs['job_group'] = group
             for asset in job_asset_range:
                 kwargs['job_asset'] = asset
-                job = Job(**kwargs)
+                job = JobTemplate(**kwargs)
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:
                 if not self.options['--no_local_schema']:
                     local_schema_path = self.get_local_schemas(job)
                     job.load_schemas(local_schema_path)
-                    super(Job, job).__init__(job.schema, "job", **kwargs)
+                    super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
                 job.create()
 
         return job

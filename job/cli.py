@@ -3,10 +3,18 @@ import stat
 import json
 import abc
 import logging
-from ordereddict import OrderedDict
+
+
+# Python 2.6 compatibility:
+try:
+    from collections import OrderedDict, defaultdict
+except ImportError:
+    from ordereddict import OrderedDict
 
 
 JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
+SCHEMA_FILE_EXTENSION = "schema"
+JOB_PATH_POSTFIX      = ["schema", ".job"] # Former for built-in, and ENV_VAR based, latter for local copies.
 
 
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
@@ -32,6 +40,32 @@ def setup_logger(name, preference_file = 'logging.json',
 
     return logger
 
+# http://stackoverflow.com/questions/3237678/\
+# how-to-create-decorator-for-lazy-initialization-of-a-property
+class ReadOnlyCachedAttribute(object):    
+    '''Computes attribute value and caches it in the instance.
+    Source: Python Cookbook 
+    Author: Denis Otkidach http://stackoverflow.com/users/168352/denis-otkidach
+    This decorator allows you to create a property which can be computed once and
+    accessed many times. Sort of like memoization
+    '''
+    def __init__(self, method, name=None):
+        self.method = method
+        self.name = name or method.__name__
+        self.__doc__ = method.__doc__
+    def __get__(self, inst, cls): 
+        if inst is None:
+            return self
+        elif self.name in inst.__dict__:
+            return inst.__dict__[self.name]
+        else:
+            result = self.method(inst)
+            inst.__dict__[self.name]=result
+            return result    
+    def __set__(self, inst, value):
+        raise AttributeError("This property is read-only")
+    def __delete__(self,inst):
+        del inst.__dict__[self.name]
 
 class RenderedLocation(dict):
     """ This is basic database to propagete (render) all 
@@ -261,6 +295,7 @@ class LocationTemplate(dict):
         for k, v in kwargs.items():
             self[k] = v
 
+
     def __getitem__(self, key):
         """ LocationTemplates are nested inside each othter. This custom getter
             looks for a key locally, and if not succeed, looks up the parents 
@@ -429,10 +464,10 @@ class LocationTemplate(dict):
 
 
     def load_schemas(self, path, schema={}):
-        """Load *.json files defining Location objects. 
+        """Load json  schemas (*.schema) files defining LocationTemplates. 
         """
         from glob import glob
-        location = os.path.join(path, "*.json")
+        location = os.path.join(path, "*.%s" % SCHEMA_FILE_EXTENSION)
         files    = glob(location)
         self.logger.debug("Schemas found: %s", files)
 
@@ -446,7 +481,7 @@ class LocationTemplate(dict):
 
 
 
-class Job(LocationTemplate):
+class JobTemplate(LocationTemplate):
     """ Hopefuly the only specialization of LocationTemplate class, 
         which provides functionality only for parent 'job' diretory.
         Main purpos of this class is to find and load all templates found
@@ -477,30 +512,24 @@ class Job(LocationTemplate):
 
         self.logger.debug("schema_locations: %s", schema_locations)
         self.load_schemas(schema_locations)
-        super(Job, self).__init__(self.schema, "job", **kwargs)
+        super(JobTemplate, self).__init__(self.schema, "job", **kwargs)
 
         # NOTE: We might implement here local storage for schames, 
         # but AFAIK this should be implemeted aside, so Job() 
         # just except paths to directories.
 
     def load_schemas(self, schema_locations):
-        """
-        """
+        """ Loads schemas from files found in number of schema_locations/postix[s]
+            as defined in JOB_PATH_POSTFIX global. """
         from os.path import join
         for directory in schema_locations:
-            # First pass for default schemas and studio wide
-            # as defined in a variable pointed by JOB_TEMPLATE_PATH_ENV
-            # (see above)
-            schemas = super(Job, self).load_schemas(join(directory, "schemas"))
-            for k, v in schemas.items():
-                self.schema[k] = v
-            # Second pass for .hidden folder usually found inside projects
-            schemas = super(Job, self).load_schemas(join(directory, ".schema"))
-            for k, v in schemas.items():
-                self.schema[k] = v
+            for postfix in JOB_PATH_POSTFIX:
+                schemas = super(JobTemplate, self).load_schemas(join(directory, postfix))
+                for k, v in schemas.items():
+                    self.schema[k] = v
         return True
 
-    def dump_local_templates(self, schema_key='job', postfix='.schema'):
+    def dump_local_templates(self, schema_key='job', postfix='.job'):
         """ Saves all schemes (hopefully) with modifications inside 
             path_template/postfix.
 
@@ -550,7 +579,7 @@ class Job(LocationTemplate):
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:
-            path = os.path.join(prefix_path, schema + ".json")
+            path = os.path.join(prefix_path, schema + ".%s" % SCHEMA_FILE_EXTENSION)
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
@@ -572,20 +601,3 @@ class Job(LocationTemplate):
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])
-
-
-if __name__ == "__main__":
-
-    job_name  = 'sandbox'
-    job_group = 'user'
-    job_asset = 'symek2'
-
-    job = Job(job_name    = job_name, 
-              job_group   = job_group, 
-              job_asset   = job_asset, 
-              log_level   = logging.INFO, 
-              root        = '/tmp/dada')
-
-    job.create()
-    job.dump_local_templates()
-   
