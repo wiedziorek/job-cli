@@ -479,7 +479,7 @@ class LocationTemplate(dict):
 
 
 
-class Job(LocationTemplate):
+class JobTemplate(LocationTemplate):
     """ Hopefuly the only specialization of LocationTemplate class, 
         which provides functionality only for parent 'job' diretory.
         Main purpos of this class is to find and load all templates found
@@ -510,7 +510,7 @@ class Job(LocationTemplate):
 
         self.logger.debug("schema_locations: %s", schema_locations)
         self.load_schemas(schema_locations)
-        super(Job, self).__init__(self.schema, "job", **kwargs)
+        super(JobTemplate, self).__init__(self.schema, "job", **kwargs)
 
         # NOTE: We might implement here local storage for schames, 
         # but AFAIK this should be implemeted aside, so Job() 
@@ -524,11 +524,11 @@ class Job(LocationTemplate):
             # First pass for default schemas and studio wide
             # as defined in a variable pointed by JOB_TEMPLATE_PATH_ENV
             # (see above)
-            schemas = super(Job, self).load_schemas(join(directory, "schemas"))
+            schemas = super(JobTemplate, self).load_schemas(join(directory, "schemas"))
             for k, v in schemas.items():
                 self.schema[k] = v
             # Second pass for .hidden folder usually found inside projects
-            schemas = super(Job, self).load_schemas(join(directory, ".schema"))
+            schemas = super(JobTemplate, self).load_schemas(join(directory, ".schema"))
             for k, v in schemas.items():
                 self.schema[k] = v
         return True
@@ -605,20 +605,3 @@ class Job(LocationTemplate):
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])
-
-
-if __name__ == "__main__":
-
-    job_name  = 'sandbox'
-    job_group = 'user'
-    job_asset = 'symek2'
-
-    job = Job(job_name    = job_name, 
-              job_group   = job_group, 
-              job_asset   = job_asset, 
-              log_level   = logging.INFO, 
-              root        = '/tmp/dada')
-
-    job.create()
-    job.dump_local_templates()
-   
