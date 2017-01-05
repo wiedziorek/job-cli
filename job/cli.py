@@ -13,6 +13,8 @@ except ImportError:
 
 
 JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
+SCHEMA_FILE_EXTENSION = "schema"
+JOB_PATH_POSTFIX      = ["schema", ".job"] # Former for built-in, and ENV_VAR based, latter for local copies.
 
 
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
@@ -462,10 +464,10 @@ class LocationTemplate(dict):
 
 
     def load_schemas(self, path, schema={}):
-        """Load *.json files defining Location objects. 
+        """Load json  schemas (*.schema) files defining LocationTemplates. 
         """
         from glob import glob
-        location = os.path.join(path, "*.json")
+        location = os.path.join(path, "*.%s" % SCHEMA_FILE_EXTENSION)
         files    = glob(location)
         self.logger.debug("Schemas found: %s", files)
 
@@ -517,23 +519,17 @@ class JobTemplate(LocationTemplate):
         # just except paths to directories.
 
     def load_schemas(self, schema_locations):
-        """
-        """
+        """ Loads schemas from files found in number of schema_locations/postix[s]
+            as defined in JOB_PATH_POSTFIX global. """
         from os.path import join
         for directory in schema_locations:
-            # First pass for default schemas and studio wide
-            # as defined in a variable pointed by JOB_TEMPLATE_PATH_ENV
-            # (see above)
-            schemas = super(JobTemplate, self).load_schemas(join(directory, "schemas"))
-            for k, v in schemas.items():
-                self.schema[k] = v
-            # Second pass for .hidden folder usually found inside projects
-            schemas = super(JobTemplate, self).load_schemas(join(directory, ".schema"))
-            for k, v in schemas.items():
-                self.schema[k] = v
+            for postfix in JOB_PATH_POSTFIX:
+                schemas = super(JobTemplate, self).load_schemas(join(directory, postfix))
+                for k, v in schemas.items():
+                    self.schema[k] = v
         return True
 
-    def dump_local_templates(self, schema_key='job', postfix='.schema'):
+    def dump_local_templates(self, schema_key='job', postfix='.job'):
         """ Saves all schemes (hopefully) with modifications inside 
             path_template/postfix.
 
@@ -583,7 +579,7 @@ class JobTemplate(LocationTemplate):
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:
-            path = os.path.join(prefix_path, schema + ".json")
+            path = os.path.join(prefix_path, schema + ".%s" % SCHEMA_FILE_EXTENSION)
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
