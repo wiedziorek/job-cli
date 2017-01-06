@@ -518,6 +518,25 @@ class JobTemplate(LocationTemplate):
         # but AFAIK this should be implemeted aside, so Job() 
         # just except paths to directories.
 
+    def get_local_schema_path(self):
+        """ Once we know where to look for we may want to refer to
+            local schema copy if the job/group/asset, as they might
+            by edited independly from defualt schemas or any other
+            present in environ varible JOB_TEMPLATE_PATH.
+
+            Parms : job - object to retrieve local_schema_path templates.
+            Return: list of additional schema locations. """
+        # This is ugly, should we move it to Job()?
+        job_schema   = self['local_schema_path']['job']
+        group_schema = self['local_schema_path']['group']
+        asset_schema = self['local_schema_path']['asset']
+
+        local_schema_path  = [self.expand_path_template(template=job_schema)]
+        local_schema_path += [self.expand_path_template(template=group_schema)]
+        local_schema_path += [self.expand_path_template(template=asset_schema)]
+
+        return local_schema_path
+
     def load_schemas(self, schema_locations):
         """ Loads schemas from files found in number of schema_locations/postix[s]
             as defined in JOB_PATH_POSTFIX global. """

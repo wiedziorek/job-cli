@@ -4,41 +4,6 @@ class CreateJobTemplate(Base):
     """ Sub command which performs creation of disk directories
        based on schemas.
     """
-    logger = None
-
-    def get_log_level_from_options(self):
-        """
-        """
-        import logging
-        log_level = logging.INFO
-        # This is ugly, subcommand should extend list of options (like plugin)
-        # not rely on bin/job to provide corrent switches. 
-        if self.options['--log_level']:
-            try:
-                log_level = getattr(logging, self.options['--log_level'])
-            except:
-                pass
-        return log_level
-
-    def get_local_schemas(self, job):
-        """ Once we know where to look for we may want to refer to
-            local schema copy if the job/group/asset, as they might
-            by edited independly from defualt schemas or any other
-            present in environ varible JOB_TEMPLATE_PATH.
-
-            Parms : job - object to retrieve local_schema_path templates.
-            Return: list of additional schema locations 
-        """
-        # This is ugly, should we move it to Job()?
-        job_schema   = job['local_schema_path']['job']
-        group_schema = job['local_schema_path']['group']
-        asset_schema = job['local_schema_path']['asset']
-
-        local_schema_path  = [job.expand_path_template(template=job_schema)]
-        local_schema_path += [job.expand_path_template(template=group_schema)]
-        local_schema_path += [job.expand_path_template(template=asset_schema)]
-
-        return local_schema_path
  
     def create_command(self):  
         """
@@ -123,7 +88,7 @@ class CreateJobTemplate(Base):
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:
                 if not self.options['--no_local_schema']:
-                    local_schema_path = self.get_local_schemas(job)
+                    local_schema_path = job.get_local_schema_path()
                     job.load_schemas(local_schema_path)
                     super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
                 job.create()
