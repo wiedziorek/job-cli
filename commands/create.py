@@ -101,7 +101,9 @@ class CreateJobTemplate(Base):
 
         if self.options['create']:
             job = self.create_command()
-        if job and not self.options['--no_local_schema']:
+        # FIXME: This is temporary.
+        if job and not self.options['--no_local_schema'] and \
+        self.options['PROJECT'] and not self.options['TYPE']:
             job.dump_local_templates()
 
 
