@@ -5,6 +5,14 @@ import abc
 import logging
 
 
+# This will actually install optional plugins
+# ... and crash on any error. We may hide it inside a class
+# and catch exception, log etc. This should not hurt us,
+# as pluggable functionality should be covered by built-in anyway.
+# TODO: We should allow to import plugins from external module path
+import plugins
+
+
 # Python 2.6 compatibility:
 try:
     from collections import OrderedDict, defaultdict
@@ -14,6 +22,7 @@ except ImportError:
 
 JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
 SCHEMA_FILE_EXTENSION = "schema"
+OPTION_FILE_EXTENSION = "opt"
 JOB_PATH_POSTFIX      = ["schema", ".job"] # Former for built-in, and ENV_VAR based, latter for local copies.
 
 
@@ -39,7 +48,7 @@ def setup_logger(name, preference_file = 'logging.json',
     logger.setLevel(log_level)
 
     return logger
-    
+
 
 class RenderedLocation(dict):
     """ This is basic database to propagete (render) all 
@@ -257,6 +266,10 @@ class LocationTemplate(dict):
     parent_template  = None
     schema_type_name = None
     child_templates  = []
+    JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
+    SCHEMA_FILE_EXTENSION = "schema"
+    OPTION_FILE_EXTENSION = "opt"
+    JOB_PATH_POSTFIX      = ["schema", ".job"]
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
 
@@ -266,6 +279,9 @@ class LocationTemplate(dict):
         self.parent_template = parent
         self.schema_type_name = schema_type_name
 
+        # FIXME: This polutes schema as we save copies of self down the stream
+        # This we should sanitaze kwargs here, so keys not present in schema
+        # are saved separetly. We could also do it on saving. 
         for k, v in kwargs.items():
             self[k] = v
 
@@ -488,9 +504,18 @@ class JobTemplate(LocationTemplate):
         self.load_schemas(schema_locations)
         super(JobTemplate, self).__init__(self.schema, "job", **kwargs)
 
-        # NOTE: We might implement here local storage for schames, 
-        # but AFAIK this should be implemeted aside, so Job() 
-        # just except paths to directories.
+        # We make it pluggable since prefs/options might be
+        # imported from database 
+        from plugin import PluginManager 
+        manager = PluginManager()
+
+        self.options_reader = manager.get_plugin_by_name("FileOptionReader")
+        self.logger.debug("Choosing option reader: %s", self.options_reader)
+
+        # We oddly add options attrib to self here. 
+        self.options = self.options_reader(self)
+        if not self.options:
+            self.logger.debug("Can't get options for a job! %s", self.options_reader.error)
 
     def get_local_schema_path(self):
         """ Once we know where to look for we may want to refer to
@@ -539,6 +564,19 @@ class JobTemplate(LocationTemplate):
             if obj.schema_type_name not in exclude_names:
                 objs[obj.schema_type_name] = str(obj)
 
+        def patch_local_schema(schema, local):
+            """ Makes changes to schema based on local settings.
+            """
+            # TODO: Should it be recursive? 
+            for key in schema:
+                if key not in local:
+                    continue
+                if schema[key] == local[key]:
+                    continue
+                schema[key] = local[key]
+                self.logger.warning("Patching schema key %s with %s.", key, local[key])
+            return schema
+
         # TODO: Should we save schema' sources or recreate schames from objects?
         # Clear storage before rendering, so we make sure all possible changes in templates
         # (life objects opposite to shemas which are stored on disk.) will take effect. 
@@ -561,14 +599,19 @@ class JobTemplate(LocationTemplate):
 
         # FIXME: This shouldn't be here:
         if not os.path.isdir(prefix_path):
-            self.logger.warning("Schama location doesn't exists! %s", prefix_path)
+            self.logger.warning("Schema location doesn't exists! %s", prefix_path)
             try:
                 os.mkdir(prefix_path)
                 self.logger.info("Making local schema location %s", prefix_path)
             except:
                 self.logger.exception("Can't make %s", prefix_path)
 
-        # get json-strings recurcively:
+
+        # Patch schema with local settings:
+        self.schema[self.schema_type_name] = \
+        patch_local_schema(self.schema[self.schema_type_name], self)
+
+        # get json-strings recursively:
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:

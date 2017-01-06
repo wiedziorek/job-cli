@@ -53,11 +53,17 @@ class PluginManager(object):
     def __init__(self, *args, **kwargs):
         self.args   = args
         self.kwargs = kwargs
+        self.last_error = None
+        self.last_info  = None
         super(PluginManager, self).__init__()
 
     @property
     def plugins(self):
         return self._plugins_store
+
+    @property
+    def error(self):
+        return self.last_error
 
     def get_plugin_by_type(self, type):
         """ Getter for plugins of type.
@@ -79,4 +85,4 @@ class PluginManager(object):
         Return: First matching plugin. """
         for plugin in self.plugins:
             if plugin.name == name:
-                return plg
+                return plugin
