@@ -47,13 +47,13 @@ class JobEnvironment(object):
         if root:
             kwargs['root']  = root
 
-        job = JobTemplate(**kwargs)
+        self.job_template = JobTemplate(**kwargs)
         if not self.options['--no_local_schema']:
-            local_schema_path = job.get_local_schema_path()
-            job.load_schemas(local_schema_path)
-            super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
+            local_schema_path = self.job_template.get_local_schema_path()
+            self.job_template.load_schemas(local_schema_path)
+            super(JobTemplate, self.job_template).__init__(self.job_template.schema, "job", **kwargs)
 
-        job_path = job.expand_path_template()
+        job_path = self.job_template.expand_path_template()
         self.job_path = job_path
 
     def create_exports(self, name_values):
@@ -130,16 +130,24 @@ class SetJobEnvironment(Base):
             print "Somehting went wrong. can't set."
             raise OSError
 
-        # FIXME: Currently overritten parameters via command line
-        # aren't store in local schemas... this is bad
+
+        # Reading options from command line and saved in job.opt(s)
+        # How to make it cleaner?
+        rez_package_names = []
+        # Job option pass:
+        if "--rez" in context.job_template.options:
+            rez_package_names += context.job_template.options['--rez']
+        # Command line pass:
+        if self.options['--rez']:
+            rez_package_names += self.options['--rez']
+        rez_package_names += [context.rez_name]
 
         package_paths = [temp_job_package_path] + context.rez_config.packages_path
-        r = ResolvedContext([context.rez_name, 'houdini'], package_paths=package_paths)
+        r = ResolvedContext(rez_package_names, package_paths=package_paths)
 
         if not r.success:
             return 
 
-        r.print_info()
         r.execute_shell()
 
 

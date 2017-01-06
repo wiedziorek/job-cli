@@ -4,7 +4,7 @@
 Usage:
   job
   job create PROJECT [TYPE ASSET] [--log_level=INFO --root=prefix --no_local_schema]
-  job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...]
+  job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log_level=INFO --root=prefix]
   job archive PROJECT 
   job mine (set|remove) <x> <y> [--moored | --drifting]
   job (-h | --help)
