@@ -23,6 +23,9 @@ else:
 
 
 from rez.resolved_context import ResolvedContext
+from rez.package_maker__ import PackageMaker
+from rez.packages_ import create_package, get_package
+from rez import config
 import subprocess
 
 
@@ -33,14 +36,38 @@ class SetJobEnvironment(Base):
     def run(self):
         """ Entry point for sub command.
         """
-        r = ResolvedContext(['houdini'])
+        from tempfile import mkdtemp
+        temp_shot_package = mkdtemp()
+        rez_config = config.create_config()
+
+        job_name  = self.options['PROJECT']
+        job_group = self.options['TYPE']
+        job_asset = self.options['ASSET']
+
+        version = "%s-%s" % (job_group, job_asset)
+
+        commands   = ['export JOB_CURRENT=%s' % job_name]
+        commands  += ['export JOB_ASSET_TYPE=%s' % job_group]
+        commands  += ['export JOB_ASSET_NAME=%s' % job_asset]
+
+        data = {'version': version, 'name': job_name, 
+                'uuid'   : 'repository.%s' % job_name,
+                'variants':[],
+                'commands': commands}
+
+        package = create_package(job_name, data)
+        variant = package.get_variant()
+        variant.install(temp_shot_package)
+        import time
+  
+        rez_name = "%s-%s-%s" % (job_name, job_group, job_asset)
+        package_paths = [temp_shot_package] + rez_config.packages_path
+
+        r = ResolvedContext([rez_name, 'houdini'], package_paths=package_paths)
+
         if not r.success:
+            print r
             return 
-
-
-        os.environ['JOB_CURRENT']    = self.options['PROJECT']
-        os.environ['JOB_ASSET_TYPE'] = self.options['TYPE']
-        os.environ['JOB_ASSET_NAME'] = self.options['ASSET']
 
         r.print_info()
         r.execute_shell()
