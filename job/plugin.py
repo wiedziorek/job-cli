@@ -1,8 +1,14 @@
+from job.utils import ReadOnlyCacheAttrib
 
-class PluginTypes(object):
-    device     = 0
-    prefLoader = 1
-    targetsPost= 2
+class PluginType(object):
+    class DeviceDriver(type):
+        pass
+    class OptionReader(type):
+        pass
+    class PreTempateRenderAction(type):
+        pass
+    class PostRenderTempalateAction(type):
+        pass
 
 class PluginRegister(type):
     """
@@ -16,9 +22,9 @@ class PluginRegister(type):
     def __init__(self, name, bases, attrs):
         """Called when a Plugin derived class is imported"""
 
-        if not hasattr(self, 'plugins'):
+        if not hasattr(self, '_plugins_store'):
             # Called when the metaclass is first instantiated
-            self.plugins = []
+            self._plugins_store = []
         else:
             # Called when a plugin class is imported
             self.register_plugin(self)
@@ -31,11 +37,12 @@ class PluginRegister(type):
         instance = plugin()
 
         # save the plugin reference
-        self.plugins += [instance]
+        self._plugins_store += [instance]
 
         # apply plugin logic - in this case connect the plugin to blinker signals
         # this must be defined in the derived class
         instance.register_signals()
+
 
 
 class PluginManager(object):
@@ -48,9 +55,16 @@ class PluginManager(object):
         self.kwargs = kwargs
         super(PluginManager, self).__init__()
 
+    @property
+    def plugins(self):
+        return self._plugins_store
+
     def get_plugin_by_type(self, type):
-        """
-        """
+        """ Getter for plugins of type.
+
+            Params: type -> class(type) present in job.plugin.PluginType.
+            Return: List of matchnig plugins 
+                    (classes derived from job.plugin.PluginManager) """
         plg = []
         for plugin in self.plugins:
             if plugin.type == type:
@@ -58,33 +72,11 @@ class PluginManager(object):
         return plg
 
     def get_plugin_by_name(self, name):
-        """
-        """
+        """ Getter for plugin by name. Currently first matching name
+         is returned, which might not be the best policy ever...
+
+        Params: string prepresenting plugin class.
+        Return: First matching plugin. """
         for plugin in self.plugins:
             if plugin.name == name:
                 return plg
-
-class MyPlugin(PluginManager):
-    def register_signals(self):
-        self.name = "MyPlugin"
-        self.type = DEVICE_DRIVER
-       
-    def run(self):
-        print "I can do other plugin stuff"
-
-
-class MyPlugin2(PluginManager):
-    def register_signals(self):
-        self.name = "MyPlugin2"
-        self.type = PREFERENCE_DRIVER
-
-    def run(self):
-        print "I can do other plugin stuff too"
-        #print self.kwargs
-
-context={'entry':"costamcostam"}
-manager = PluginManager(context=context)
-
-devices = manager.get_plugin_by_type(DEVICE_DRIVER)
-for d in devices:
-    d.run()

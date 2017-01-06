@@ -2,7 +2,7 @@
 
 # http://stackoverflow.com/questions/3237678/\
 # how-to-create-decorator-for-lazy-initialization-of-a-property
-class ReadOnlyCacheAttribute(object):    
+class ReadOnlyCacheAttrib(object):    
     '''Computes attribute value and caches it in the instance.
     Source: Python Cookbook 
     Author: Denis Otkidach http://stackoverflow.com/users/168352/denis-otkidach
