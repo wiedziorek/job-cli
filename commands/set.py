@@ -45,7 +45,7 @@ class JobEnvironment(object):
         kwargs['job_group'] = self.job_group
         kwargs['log_level'] = self.log_level
         if root:
-            kwargs['root']  = rot
+            kwargs['root']  = root
 
         job = JobTemplate(**kwargs)
         if not self.options['--no_local_schema']:
@@ -110,7 +110,7 @@ class JobRezEnvironment(JobEnvironment):
         """
         variant = self.package.get_variant()
         variant.install(path)
-        
+
 
 class SetJobEnvironment(Base):
     """ Sub command which performs setup of the environment per job.
@@ -129,6 +129,9 @@ class SetJobEnvironment(Base):
         if not context(path=temp_job_package_path):
             print "Somehting went wrong. can't set."
             raise OSError
+
+        # FIXME: Currently overritten parameters via command line
+        # aren't store in local schemas... this is bad
 
         package_paths = [temp_job_package_path] + context.rez_config.packages_path
         r = ResolvedContext([context.rez_name, 'houdini'], package_paths=package_paths)
