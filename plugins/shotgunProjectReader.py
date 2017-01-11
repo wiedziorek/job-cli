@@ -15,7 +15,11 @@ class ShotgunProjectReader(PluginManager):
         sgtk_path = "/STUDIO/sgtk/studio/install/core/python"
         if not sgtk_path in sys.path:
             sys.path.append(sgtk_path)
-        import sgtk
+        try:
+            import sgtk
+        except ImportError, e:
+            print "Cannot import sgtk.", e
+            raise ImportError
         # Find project
         sg = sgtk.util.shotgun.create_sg_connection()
         project = sg.find_one("Project", [["name", "is", name]])
