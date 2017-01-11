@@ -9,5 +9,5 @@ class FindShotgunProject(Base):
         """
         from job.plugin import PluginManager
         manager = PluginManager()
-        self.shutgun_reader = manager.get_plugin_by_name("ShotgunProjectReader")
-        print self.shutgun_reader(self.options["PROJECT"])
+        self.shotgun_reader = manager.get_plugin_by_name("ShotgunProjectReader")
+        print self.shotgun_reader(self.options)

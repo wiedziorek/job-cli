@@ -6,8 +6,7 @@ Usage:
   job create PROJECT [TYPE ASSET] [--log_level=INFO --root=prefix --no_local_schema]
   job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log_level=INFO --root=prefix]
   job archive PROJECT 
-  job mine (set|remove) <x> <y> [--moored | --drifting]
-  job find PROJECT
+  job find PROJECT (asset|shot) [FIELDS...]
   job (-h | --help)
   job --version
 
@@ -15,9 +14,6 @@ Options:
                         No options -> "job set sandbox user $USER"
   -h --help             Show this screen.
   --version             Show version.
-  --speed=<kn>          Speed in knots [default: 10].
-  --moored              Moored (anchored) mine.
-  --drifting            Drifting mine.
   --log_level=<level>   Log level of subcommands (INFO | DEBUG)
   --no_local_schema     Disable savig/loading local copy of schema on 'create' 
   --root=<prefix>       Overrides root directory (only for debuging purposes!) 
