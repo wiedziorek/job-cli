@@ -7,6 +7,7 @@ Usage:
   job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log_level=INFO --root=prefix]
   job archive PROJECT 
   job mine (set|remove) <x> <y> [--moored | --drifting]
+  job find PROJECT
   job (-h | --help)
   job --version
 
