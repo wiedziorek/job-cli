@@ -3,7 +3,7 @@ class ShotgunPlugin(object):
     def __init__(self):
         # Import Shotgun Toolkit module.
         import sys
-        sgtk_path = "/home/ksalem/sgtk/studio/install/core/python"
+        sgtk_path = "/STUDIO/sgtk/studio/install/core/python"
         if not sgtk_path in sys.path:
             sys.path.append(sgtk_path)
         try:
