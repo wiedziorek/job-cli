@@ -133,14 +133,7 @@ class LocalDevice(DeviceDriver):
             self.logger.exception("Couldn't make %s",  path)
             raise OSError
 
-    def make_link(self, path, targets):
-        parent = targets[path].parent_template
-        assert parent != None
-        # Find parent path by template object. 
-        # TODO: Is it bug? There might be many parents paths?
-        parent_path    = targets.keys()[targets.values().index(parent)] 
-        old_path, name = os.path.split(path)
-        link_path      = os.path.join(parent_path, name)
+    def make_link(self, path, link_path):
 
         if os.path.exists(link_path):
             if os.path.islink(link_path):
@@ -156,6 +149,7 @@ class LocalDevice(DeviceDriver):
         except:
             self.logger.exception("Can't make a link %s %s", path, link_path)
             raise OSError
+
 
     # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
     def remove_write_permissions(self, path):
@@ -405,6 +399,7 @@ class LocationTemplate(dict):
         else:
             root = _root
 
+        # print self.expand_path_template(self['link_target'])
         # Add paths to targets dictionary
         # We expand possible env variables and raise on error.
         for name in self['names']:
@@ -623,6 +618,40 @@ class JobTemplate(LocationTemplate):
     def create(self):
         """ TODO: This is only fo testing purposes.
         """
+        def create_link(path, targets):
+            """ Create external or interal links between folders.
+
+                'is_link' forces engine to override @root for
+                particular target and link to a folder place as
+                if @root wasn't overritten:
+
+                    /@overritten_root/path --> /@original_root/path
+
+                'link_target' does the opposite thing. It create link in remote
+                place to our local target.
+
+                   /@original_root/path --> /@overritten_root/path
+            """
+
+            if targets[path]['is_link']:
+                # Remove it
+                parent = targets[path].parent_template
+                assert parent != None
+                # Find parent path by template object. 
+                parent_path    = targets.keys()[targets.values().index(parent)] 
+                old_path, name = os.path.split(path)
+                link_path      = os.path.join(parent_path, name)
+                device.make_link(path, link_path)
+
+            elif targets[path]['link_target']:
+                if self['job_name'] == self['job_asset']:
+                    return False 
+                link_path = self.expand_path_template(targets[path]['link_target'])
+                print path, link_path
+                device.make_link(path, link_path)
+
+            return True
+            
 
         # TODO: Device driver should be pluggable
         device = LocalDevice(log_level=self.logger.level)
@@ -631,9 +660,8 @@ class JobTemplate(LocationTemplate):
 
         for path in targets:
             device.make_dir(path)
-            if targets[path]['is_link']:
-                device.make_link(path, targets)
-
+            create_link(path, targets)
+            # Cosmetics:       
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])
