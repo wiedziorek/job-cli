@@ -121,14 +121,15 @@ class SetJobEnvironment(Base):
         """
         from tempfile import mkdtemp
         from rez.resolved_context import ResolvedContext
+        from rez.packages_ import get_latest_package
 
-        temp_job_package_path = mkdtemp()
+        temp_job_package_path = os.path.join(os.getenv("HOME"), ".job")
+        if not os.path.isdir(temp_job_package_path):
+            os.mkdir(temp_job_package_path)
+
         log_level = self.get_log_level_from_options(self.options)
         context   = JobRezEnvironment(log_level, self.options)
-
-        if not context(path=temp_job_package_path):
-            print "Somehting went wrong. can't set."
-            raise OSError
+        package_paths = [temp_job_package_path] + context.rez_config.packages_path
 
 
         # Reading options from command line and saved in job.opt(s)
@@ -142,13 +143,23 @@ class SetJobEnvironment(Base):
             rez_package_names += self.options['--rez']
         rez_package_names += [context.rez_name]
 
-        package_paths = [temp_job_package_path] + context.rez_config.packages_path
+        # Lets try if packages was already created:
+        if not get_latest_package(context.data['name'], paths=temp_job_package_path):
+            print "New package?"
+            if not context(path=temp_job_package_path):
+                print "Somehting went wrong. can't set."
+                raise OSError
+        
         r = ResolvedContext(rez_package_names, package_paths=package_paths)
 
-        if not r.success:
-            return 
+        if r.success:
+            r.execute_shell()
 
-        r.execute_shell()
+        return True
+       
+
+
+
 
 
 
