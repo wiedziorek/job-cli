@@ -3,7 +3,7 @@
    				 {"name": "stills", "type": "location", "options": {"link_target": null} }],
     "names": ["dailies"], 
     "is_link": false, 
-    "link_target": "@root/@job_name/@job_name/@job_name/dailes/@job_asset"
+    "link_target": "@root/@job_name/@job_name/@job_name/dailies/@job_asset"
 }
 
 
