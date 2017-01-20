@@ -1,16 +1,22 @@
+STUDIO_SGTK_PATH = "/STUDIO/sgtk/studio/install/core/python"
+
 class ShotgunPlugin(object):
 
     def __init__(self):
         # Import Shotgun Toolkit module.
         import sys
-        sgtk_path = "/STUDIO/sgtk/studio/install/core/python"
-        if not sgtk_path in sys.path:
-            sys.path.append(sgtk_path)
         try:
             import sgtk
         except ImportError, e:
+            sys.path.append(STUDIO_SGTK_PATH)
+            try:
+                import sgtk
+            except:
+                pass
+        finally:
             print "Cannot import sgtk.", e
             raise ImportError
+
         # Create connection.
         self.sg = sgtk.util.shotgun.create_sg_connection()
 
