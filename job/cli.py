@@ -20,29 +20,6 @@ except ImportError:
     from ordereddict import OrderedDict
 
 
-# https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-def setup_logger(name, preference_file = 'logging.json', 
-                       log_level       =  logging.INFO):
-    """ Setup logging configuration.
-    """
-    from os.path import join, split, realpath, dirname, exists
-    import logging.config
-
-    _path = dirname(realpath(__file__))
-    _path = join(_path, preference_file)
-
-    if exists(_path):
-        with open(_path, 'rt') as file:
-            config = json.load(file)
-        logging.config.dictConfig(config)
-    else:
-        logging.basicConfig(level=log_level)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(log_level)
-
-    return logger
-
 
 class RenderedLocation(dict):
     """ This is basic database to propagete (render) all 
@@ -106,6 +83,7 @@ class LocalDevice(DeviceDriver):
     logger = None
     def __init__(self, log_level=logging.INFO, **kwargs):
         super(LocalDevice, self).__init__(**kwargs)
+        from .utils import setup_logger
         name = self.__class__.__name__
         self.logger = setup_logger(name, log_level=log_level)
 
@@ -479,6 +457,7 @@ class JobTemplate(LocationTemplate):
             job.render() (children created recursively)
         """
         from os.path import join, split, realpath, dirname
+        from utils import setup_logger
 
         name = self.__class__.__name__
         self.logger = setup_logger(name, log_level=log_level)
@@ -641,7 +620,6 @@ class JobTemplate(LocationTemplate):
                 if self['job_name'] == self['job_asset']:
                     return False 
                 link_path = self.expand_path_template(targets[path]['link_target'])
-                print path, link_path
                 device.make_link(path, link_path)
 
             return True
