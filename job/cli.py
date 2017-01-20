@@ -20,12 +20,6 @@ except ImportError:
     from ordereddict import OrderedDict
 
 
-JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
-SCHEMA_FILE_EXTENSION = "schema"
-OPTION_FILE_EXTENSION = "opt"
-JOB_PATH_POSTFIX      = ["schema", ".job"] # Former for built-in, and ENV_VAR based, latter for local copies.
-
-
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
 def setup_logger(name, preference_file = 'logging.json', 
                        log_level       =  logging.INFO):
@@ -133,14 +127,7 @@ class LocalDevice(DeviceDriver):
             self.logger.exception("Couldn't make %s",  path)
             raise OSError
 
-    def make_link(self, path, targets):
-        parent = targets[path].parent_template
-        assert parent != None
-        # Find parent path by template object. 
-        # TODO: Is it bug? There might be many parents paths?
-        parent_path    = targets.keys()[targets.values().index(parent)] 
-        old_path, name = os.path.split(path)
-        link_path      = os.path.join(parent_path, name)
+    def make_link(self, path, link_path):
 
         if os.path.exists(link_path):
             if os.path.islink(link_path):
@@ -156,6 +143,7 @@ class LocalDevice(DeviceDriver):
         except:
             self.logger.exception("Can't make a link %s %s", path, link_path)
             raise OSError
+
 
     # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
     def remove_write_permissions(self, path):
@@ -268,7 +256,7 @@ class LocationTemplate(dict):
     child_templates  = []
     JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
     SCHEMA_FILE_EXTENSION = "schema"
-    OPTION_FILE_EXTENSION = "opt"
+    OPTION_FILE_EXTENSION = "options"
     JOB_PATH_POSTFIX      = ["schema", ".job"]
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
@@ -405,6 +393,7 @@ class LocationTemplate(dict):
         else:
             root = _root
 
+        # print self.expand_path_template(self['link_target'])
         # Add paths to targets dictionary
         # We expand possible env variables and raise on error.
         for name in self['names']:
@@ -457,7 +446,7 @@ class LocationTemplate(dict):
         """Load json  schemas (*.schema) files defining LocationTemplates. 
         """
         from glob import glob
-        location = os.path.join(path, "*.%s" % SCHEMA_FILE_EXTENSION)
+        location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
         files    = glob(location)
         self.logger.debug("Schemas found: %s", files)
 
@@ -497,8 +486,8 @@ class JobTemplate(LocationTemplate):
         schema_locations  = [dirname(realpath(__file__))]
 
         # JOB_TEMPLATE_PATH_ENV may store store additional locations of schema folders.
-        if os.getenv(JOB_TEMPLATE_PATH_ENV, None):
-            schema_locations += os.getenv(JOB_TEMPLATE_PATH_ENV).split(":")
+        if os.getenv(self.JOB_TEMPLATE_PATH_ENV, None):
+            schema_locations += os.getenv(self.JOB_TEMPLATE_PATH_ENV).split(":")
 
         self.logger.debug("schema_locations: %s", schema_locations)
         self.load_schemas(schema_locations)
@@ -541,7 +530,7 @@ class JobTemplate(LocationTemplate):
             as defined in JOB_PATH_POSTFIX global. """
         from os.path import join
         for directory in schema_locations:
-            for postfix in JOB_PATH_POSTFIX:
+            for postfix in self.JOB_PATH_POSTFIX:
                 schemas = super(JobTemplate, self).load_schemas(join(directory, postfix))
                 for k, v in schemas.items():
                     self.schema[k] = v
@@ -615,7 +604,7 @@ class JobTemplate(LocationTemplate):
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:
-            path = os.path.join(prefix_path, schema + ".%s" % SCHEMA_FILE_EXTENSION)
+            path = os.path.join(prefix_path, schema + ".%s" % self.SCHEMA_FILE_EXTENSION)
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
@@ -623,6 +612,40 @@ class JobTemplate(LocationTemplate):
     def create(self):
         """ TODO: This is only fo testing purposes.
         """
+        def create_link(path, targets):
+            """ Create external or interal links between folders.
+
+                'is_link' forces engine to override @root for
+                particular target and link to a folder place as
+                if @root wasn't overritten:
+
+                    /@overritten_root/path --> /@original_root/path
+
+                'link_target' does the opposite thing. It create link in remote
+                place to our local target.
+
+                   /@original_root/path --> /@overritten_root/path
+            """
+
+            if targets[path]['is_link']:
+                # Remove it
+                parent = targets[path].parent_template
+                assert parent != None
+                # Find parent path by template object. 
+                parent_path    = targets.keys()[targets.values().index(parent)] 
+                old_path, name = os.path.split(path)
+                link_path      = os.path.join(parent_path, name)
+                device.make_link(path, link_path)
+
+            elif targets[path]['link_target']:
+                if self['job_name'] == self['job_asset']:
+                    return False 
+                link_path = self.expand_path_template(targets[path]['link_target'])
+                print path, link_path
+                device.make_link(path, link_path)
+
+            return True
+            
 
         # TODO: Device driver should be pluggable
         device = LocalDevice(log_level=self.logger.level)
@@ -631,9 +654,8 @@ class JobTemplate(LocationTemplate):
 
         for path in targets:
             device.make_dir(path)
-            if targets[path]['is_link']:
-                device.make_link(path, targets)
-
+            create_link(path, targets)
+            # Cosmetics:       
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])

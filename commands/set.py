@@ -48,7 +48,7 @@ class JobEnvironment(object):
             kwargs['root']  = root
 
         self.job_template = JobTemplate(**kwargs)
-        if not self.options['--no_local_schema']:
+        if not self.options['--no-local-schema']:
             local_schema_path = self.job_template.get_local_schema_path()
             self.job_template.load_schemas(local_schema_path)
             super(JobTemplate, self.job_template).__init__(self.job_template.schema, "job", **kwargs)

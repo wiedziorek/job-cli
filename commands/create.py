@@ -87,7 +87,7 @@ class CreateJobTemplate(Base):
                 job = JobTemplate(**kwargs)
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:
-                if not self.options['--no_local_schema']:
+                if not self.options['--no-local-schema']:
                     local_schema_path = job.get_local_schema_path()
                     job.load_schemas(local_schema_path)
                     super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
@@ -102,7 +102,7 @@ class CreateJobTemplate(Base):
         if self.options['create']:
             job = self.create_command()
         # FIXME: This is temporary.
-        if job and not self.options['--no_local_schema'] and \
+        if job and not self.options['--no-local-schema'] and \
         self.options['PROJECT'] and not self.options['TYPE']:
             job.dump_local_templates()
 
