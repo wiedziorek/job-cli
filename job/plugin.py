@@ -1,4 +1,4 @@
-from job.utils import ReadOnlyCacheAttrib
+from job.utils import ReadOnlyCacheAttrib, setup_logger
 
 class PluginType(object):
     class DeviceDriver(type):
@@ -38,12 +38,12 @@ class PluginRegister(type):
         # optionally you could just store the plugin class and lazily instantiate
         instance = plugin()
 
-        # save the plugin reference
-        self._plugins_store += [instance]
-
         # apply plugin logic - in this case connect the plugin to blinker signals
         # this must be defined in the derived class
-        instance.register_signals()
+        if instance.register_signals():
+            # save the plugin reference
+            self._plugins_store += [instance]
+
 
 
 
@@ -53,10 +53,34 @@ class PluginManager(object):
     name = "PluginManager"
     type = None
     def __init__(self, *args, **kwargs):
+        from job.utils import get_log_level_from_options
+        from logging import INFO
         self.args   = args
         self.kwargs = kwargs
         self.last_error = None
         self.last_info  = None
+        self.options    = None
+
+
+        # FIXME!!! Clearly passing options (commandline) is not resolved now.
+        # These are options:
+        # 1. Somehow I feel, we should clearly separate level:
+        #       a) ./bin/job command level passing user cli options to commands
+        #       b) commands should prepare all options 'manually' and send to JobTemplates / 
+        #          plugins only plain old python int/bools/vars, parsing all options by it self.
+        # 2. Carry cli options docopt from object to object allowing commands and plugins to
+        # use it as they like. This is fishy, since in case of changes in cli, all objects, and plugs
+        # will have to accomodate to this.
+        self.log_level  = INFO
+        self.logger = setup_logger("Plugin", log_level=self.log_level)
+
+        if 'options' in kwargs:
+            self.options = kwargs['options']
+            self.log_level = get_log_level_from_options(self.options)
+        else:
+            self.logger.debug("PluginManager must be provided with Job option class (dict).")
+             
+        self.logger = setup_logger("Plugin", log_level=self.log_level) # FIXME
         super(PluginManager, self).__init__()
 
     @property
