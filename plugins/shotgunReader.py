@@ -37,11 +37,11 @@ class ShotgunReader(ShotgunPlugin, PluginManager):
             return self.read_asset(options["PROJECT"],
                                    options["TYPE"],
                                    options["ASSET"],
-                                   options["--fields"])
+                                   options["FIELDS"])
         elif options["TYPE"]:
             return self.read_type(options["PROJECT"],
                                   options["TYPE"],
-                                  options["--fields"])
+                                  options["FIELDS"])
         else:
             return self.read_project(options["PROJECT"],
-                                     options["--fields"])
+                                     options["FIELDS"])
