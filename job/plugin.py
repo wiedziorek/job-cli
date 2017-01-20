@@ -5,6 +5,8 @@ class PluginType(object):
         pass
     class OptionReader(type):
         pass
+    class OptionWriter(type):
+        pass
     class PreTempateRenderAction(type):
         pass
     class PostRenderTempalateAction(type):
