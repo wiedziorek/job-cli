@@ -50,9 +50,10 @@ class CreateJobTemplate(Base):
             return job_asset_name_list
             
 
-        from job.cli import JobTemplate, setup_logger
+        from job.cli import JobTemplate
+        from job.utils import setup_logger, get_log_level_from_options
         from os import environ
-        log_level = self.get_log_level_from_options()
+        log_level = get_log_level_from_options(self.options)
 
         job_name  = self.options['PROJECT']
         job_group = self.options['TYPE']

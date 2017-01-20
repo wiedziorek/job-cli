@@ -8,6 +8,7 @@ class ReadShotgun(Base):
         """ Entry point for sub command.
         """
         from job.plugin import PluginManager
-        manager = PluginManager()
+        manager = PluginManager(options=self.options)
         self.shotgun_reader = manager.get_plugin_by_name("ShotgunReader")
-        print self.shotgun_reader(self.options)
+        if self.shotgun_reader:
+        	print self.shotgun_reader(self.options)

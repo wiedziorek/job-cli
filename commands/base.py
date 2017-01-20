@@ -20,9 +20,9 @@ class Base(object):
         _opt = self.options
         if options:
             _opt = options
-        if _opt['--log_level']:
+        if _opt['--log-level']:
             try:
-                log_level = getattr(logging, _opt['--log_level'])
+                log_level = getattr(logging, _opt['--log-level'])
             except:
                 pass
         return log_level

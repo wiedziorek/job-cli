@@ -7,7 +7,8 @@ class FileOptionReader(PluginManager):
     type = PluginType.OptionReader
         
     def register_signals(self):
-        print "I am %s and register as the %s" % (self.name, self.type)
+        self.logger.debug("%s registering as %s", self.name, self.type)
+        return True
 
     def load_options_from_file(self, path, options={}):
         """

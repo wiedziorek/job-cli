@@ -67,6 +67,21 @@
             "level": "ERROR",
             "handlers":["console", "error_file_handler" ], 
             "propagate": "no"
+        },
+         "Plugin": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": "no"
+        },
+         "Pugin": {
+            "level": "INFO",
+            "handlers":["console", "info_file_handler" ], 
+            "propagate": "no"
+        },
+         "Plugin": {
+            "level": "ERROR",
+            "handlers":["console", "error_file_handler" ], 
+            "propagate": "no"
         }
     }
 
