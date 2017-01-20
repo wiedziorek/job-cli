@@ -13,9 +13,6 @@ class ShotgunPlugin(object):
             except:
                 self.logger.debug("Cannot import sgtk, %s", e)
                 return False
-        finally:
-            # raise ImportError
-            return False
 
         self.logger.debug("%s registering as %s", self.name, self.type)
 
