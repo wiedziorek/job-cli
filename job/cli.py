@@ -20,12 +20,6 @@ except ImportError:
     from ordereddict import OrderedDict
 
 
-JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
-SCHEMA_FILE_EXTENSION = "schema"
-OPTION_FILE_EXTENSION = "opt"
-JOB_PATH_POSTFIX      = ["schema", ".job"] # Former for built-in, and ENV_VAR based, latter for local copies.
-
-
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
 def setup_logger(name, preference_file = 'logging.json', 
                        log_level       =  logging.INFO):
@@ -262,7 +256,7 @@ class LocationTemplate(dict):
     child_templates  = []
     JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
     SCHEMA_FILE_EXTENSION = "schema"
-    OPTION_FILE_EXTENSION = "opt"
+    OPTION_FILE_EXTENSION = "options"
     JOB_PATH_POSTFIX      = ["schema", ".job"]
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
@@ -452,7 +446,7 @@ class LocationTemplate(dict):
         """Load json  schemas (*.schema) files defining LocationTemplates. 
         """
         from glob import glob
-        location = os.path.join(path, "*.%s" % SCHEMA_FILE_EXTENSION)
+        location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
         files    = glob(location)
         self.logger.debug("Schemas found: %s", files)
 
@@ -492,8 +486,8 @@ class JobTemplate(LocationTemplate):
         schema_locations  = [dirname(realpath(__file__))]
 
         # JOB_TEMPLATE_PATH_ENV may store store additional locations of schema folders.
-        if os.getenv(JOB_TEMPLATE_PATH_ENV, None):
-            schema_locations += os.getenv(JOB_TEMPLATE_PATH_ENV).split(":")
+        if os.getenv(self.JOB_TEMPLATE_PATH_ENV, None):
+            schema_locations += os.getenv(self.JOB_TEMPLATE_PATH_ENV).split(":")
 
         self.logger.debug("schema_locations: %s", schema_locations)
         self.load_schemas(schema_locations)
@@ -536,7 +530,7 @@ class JobTemplate(LocationTemplate):
             as defined in JOB_PATH_POSTFIX global. """
         from os.path import join
         for directory in schema_locations:
-            for postfix in JOB_PATH_POSTFIX:
+            for postfix in self.JOB_PATH_POSTFIX:
                 schemas = super(JobTemplate, self).load_schemas(join(directory, postfix))
                 for k, v in schemas.items():
                     self.schema[k] = v
@@ -610,7 +604,7 @@ class JobTemplate(LocationTemplate):
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:
-            path = os.path.join(prefix_path, schema + ".%s" % SCHEMA_FILE_EXTENSION)
+            path = os.path.join(prefix_path, schema + ".%s" % self.SCHEMA_FILE_EXTENSION)
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
