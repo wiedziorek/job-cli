@@ -12,6 +12,8 @@ import logging
 # TODO: We should allow to import plugins from external module path
 import plugins
 
+# Own stuff:
+
 
 # Python 2.6 compatibility:
 try:
@@ -19,202 +21,6 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
-
-
-class RenderedLocation(dict):
-    """ This is basic database to propagete (render) all 
-        information per directory. It is only used by
-        workers to execute actual commands on disk or
-        remote location. It's like a rendered flatten image of 
-        all changes that will be performed.
-    """
-    parent = None
-    def __init__(self, path, source, parent=None):
-        """ This populates generated paths with common attributes.
-        """
-        self.parent = parent
-        self['path'] = path
-        self['permission']  = {'group': False, 'others': False}
-        self['ownership']   = {'user' : None, 'group': 'artists'}
-        self['is_link']     = False
-        self['link_root']   = False
-        self['link_target'] = None
-        self['root']        = None
-
-        # Parent copies settings first if provided:
-        if parent:
-            for k, v in parent.items():
-                if k in self.keys():
-                    self[k] = v
-
-        # Then source otherrides if desired.
-        for k, v in source.items():
-            if k in self.keys():
-                self[k] = v
-
-
-
-class DeviceDriver(object):
-    """ Abstract class defining an interface to production storage.
-        Basic implementation does simply local storage manipulation via
-        shell or Python interface. More interesitng implementations
-        include remote execution or fuse virtual file systems.
-    """
-    __metaclass__ = abc.ABCMeta
-    @abc.abstractmethod
-    def make_dir(self, path):
-        pass
-    @abc.abstractmethod
-    def make_link(self, path, targets):
-        pass
-    @abc.abstractmethod
-    def remove_write_permissions(self, path):
-        pass
-    @abc.abstractmethod
-    def add_write_permissions(self, path, group=True, others=False):
-        pass
-    @abc.abstractmethod
-    def set_ownership(self, path, user=None, group=None):
-        pass
-
-
-
-class LocalDevice(DeviceDriver):
-    logger = None
-    def __init__(self, log_level=logging.INFO, **kwargs):
-        super(LocalDevice, self).__init__(**kwargs)
-        from .utils import setup_logger
-        name = self.__class__.__name__
-        self.logger = setup_logger(name, log_level=log_level)
-
-    def make_dir(self, path):
-        """ Uses standard Python facility to create a directory tree.
-        """
-        # TODO: How to process errors, 
-        # TODO: How to implement more sofisticated error treatment
-        # like: If path exists, and it's a link do A, if it's not a link do B?
-        if os.path.exists(path):
-            self.logger.warning("Path exists, can't proceed %s", path)
-            return False
-        # same as above.
-        try:
-            os.makedirs(path)
-            self.logger.info("Making %s", path)
-            return True
-        except OSError, e:
-            self.logger.exception("Couldn't make %s",  path)
-            raise OSError
-
-    def make_link(self, path, link_path):
-
-        if os.path.exists(link_path):
-            if os.path.islink(link_path):
-                self.logger.warning("Link exists %s", link_path)
-            else:
-                self.logger.warning("Path exists, so I can't make a link here %s", link_path)
-            return False
-
-        try:
-            os.symlink(path, link_path) 
-            self.logger.info("Making symlink %s %s", path, link_path) 
-            return True
-        except:
-            self.logger.exception("Can't make a link %s %s", path, link_path)
-            raise OSError
-
-
-    # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
-    def remove_write_permissions(self, path):
-        """Remove write permissions from this path, while keeping all other permissions intact.
-
-        Params:
-            path:  The path whose permissions to alter.
-        """
-
-        NO_USER_WRITING  = ~stat.S_IWUSR
-        NO_GROUP_WRITING = ~stat.S_IWGRP
-        NO_OTHER_WRITING = ~stat.S_IWOTH
-        NO_WRITING = NO_USER_WRITING & NO_GROUP_WRITING & NO_OTHER_WRITING
-
-        current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
-        try:
-            os.chmod(path, current_permissions & NO_WRITING)
-        except:
-            self.logger.exception("Can't remove write permission from %s", path)
-            raise OSError
-
-        self.logger.debug("remove_write_permissions: %s (%s)", path, current_permissions & NO_WRITING)
-
-    def add_write_permissions(self, path, group=True, others=False):
-        """ Set permissions flags according to provided params.
-
-        Params:
-            path:          The path to set permissions for.
-            group, others: Permissions masks.
-        """
-
-        WRITING = stat.S_IWUSR 
-        if group:
-            WRITING = WRITING | stat.S_IWGRP
-        if others:
-            WRITING = WRITING | stat.S_IWOTH
-
-        current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
-
-        try:
-            os.chmod(path, current_permissions | WRITING)
-        except:
-            self.logger.exception("Can't add write permission for %s", path)
-            raise OSError
-
-        self.logger.debug("add_write_permissions: %s (%s)", path, current_permissions | WRITING)
-
-    def set_ownership(self, path, user=None, group=None):
-        """ Sets the ownership of a path. 
-
-        Params:
-            user:  User string (None means no change)
-            group: Group string (None means no change)
-        """
-        from grp import getgrnam
-        from pwd import getpwnam, getpwuid
-        from getpass import getuser
-
-        def get_user_id(path, user):
-            """ """
-            if not user:
-                return os.stat(path).st_uid
-            try: 
-                return getpwnam(user).pw_uid
-            except:
-                self.logger.exception("Can't find specified user %s", user)
-                raise OSError
-
-        def get_group_id(path, group):
-            """"""
-            if not group:
-                return os.stat(path).st_gid
-            try: 
-                return getgrnam(group).gr_gid 
-            except:
-                self.logger.exception("Can't find specified group %s", group)
-                raise OSError
-
-        # This may happen due to 'upper' logic...
-        if not user and not group: 
-            return False
-        # 
-        uid = get_user_id(path, user)
-        gid = get_group_id(path, group)
-        #
-        try:
-            os.chown(path, uid, gid)
-        except:
-            self.logger.exception("Can't change ownership for %s", path)
-            raise OSError
-
-        self.logger.debug("set_ownership: %s (%s, %s)", path, uid, gid)
-        return True
 
 
 class LocationTemplate(dict):
@@ -232,6 +38,7 @@ class LocationTemplate(dict):
     parent_template  = None
     schema_type_name = None
     child_templates  = []
+    # TODO: use config for this?
     JOB_TEMPLATE_PATH_ENV = 'JOB_TEMPLATE_PATH' 
     SCHEMA_FILE_EXTENSION = "schema"
     OPTION_FILE_EXTENSION = "options"
@@ -475,9 +282,9 @@ class JobTemplate(LocationTemplate):
         # We make it pluggable since prefs/options might be
         # imported from database 
         from plugin import PluginManager 
-        manager = PluginManager()
+        self.plg_manager = PluginManager()
 
-        self.job_options_reader = manager.get_plugin_by_name("FileOptionReader")
+        self.job_options_reader = self.plg_manager.get_plugin_by_name("FileOptionReader")
         self.logger.debug("Choosing option reader: %s", self.job_options_reader)
 
         # We oddly add options attrib to self here.
@@ -586,6 +393,7 @@ class JobTemplate(LocationTemplate):
 
         for schema in tmpl_objects:
             path = os.path.join(prefix_path, schema + ".%s" % self.SCHEMA_FILE_EXTENSION)
+            # TODO: use DeviceManager for this.
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
@@ -628,7 +436,8 @@ class JobTemplate(LocationTemplate):
             
 
         # TODO: Device driver should be pluggable
-        device = LocalDevice(log_level=self.logger.level)
+        device = self.plg_manager.get_plugin_by_name("LocalDevicePython")
+        # device = LocalDevice(log_level=self.logger.level)
         device.logger.debug("Selecting device driver %s", device)
         targets = self.render()
 
@@ -639,3 +448,37 @@ class JobTemplate(LocationTemplate):
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])
+
+
+
+# Deprecited...?            
+# class RenderedLocation(dict):
+#     """ This is basic database to propagete (render) all 
+#         information per directory. It is only used by
+#         workers to execute actual commands on disk or
+#         remote location. It's like a rendered flatten image of 
+#         all changes that will be performed.
+#     """
+#     parent = None
+#     def __init__(self, path, source, parent=None):
+#         """ This populates generated paths with common attributes.
+#         """
+#         self.parent = parent
+#         self['path'] = path
+#         self['permission']  = {'group': False, 'others': False}
+#         self['ownership']   = {'user' : None, 'group': 'artists'}
+#         self['is_link']     = False
+#         self['link_root']   = False
+#         self['link_target'] = None
+#         self['root']        = None
+
+#         # Parent copies settings first if provided:
+#         if parent:
+#             for k, v in parent.items():
+#                 if k in self.keys():
+#                     self[k] = v
+
+#         # Then source otherrides if desired.
+#         for k, v in source.items():
+#             if k in self.keys():
+#                 self[k] = v
