@@ -448,37 +448,3 @@ class JobTemplate(LocationTemplate):
             device.remove_write_permissions(path)
             device.add_write_permissions(path, **targets[path]['permission'])
             device.set_ownership(path, **targets[path]['ownership'])
-
-
-
-# Deprecited...?            
-# class RenderedLocation(dict):
-#     """ This is basic database to propagete (render) all 
-#         information per directory. It is only used by
-#         workers to execute actual commands on disk or
-#         remote location. It's like a rendered flatten image of 
-#         all changes that will be performed.
-#     """
-#     parent = None
-#     def __init__(self, path, source, parent=None):
-#         """ This populates generated paths with common attributes.
-#         """
-#         self.parent = parent
-#         self['path'] = path
-#         self['permission']  = {'group': False, 'others': False}
-#         self['ownership']   = {'user' : None, 'group': 'artists'}
-#         self['is_link']     = False
-#         self['link_root']   = False
-#         self['link_target'] = None
-#         self['root']        = None
-
-#         # Parent copies settings first if provided:
-#         if parent:
-#             for k, v in parent.items():
-#                 if k in self.keys():
-#                     self[k] = v
-
-#         # Then source otherrides if desired.
-#         for k, v in source.items():
-#             if k in self.keys():
-#                 self[k] = v
