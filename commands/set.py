@@ -28,7 +28,7 @@ class JobEnvironment(object):
     cli_options  = None
     job_path = None
     def __init__(self, cli_options, log_level='INFO'):
-        from job.cli import JobTemplate
+        from job.templateEngine import JobTemplate
         self.cli_options = cli_options
         self.job_name  = self.cli_options['PROJECT']
         self.job_group = self.cli_options['TYPE']

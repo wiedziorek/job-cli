@@ -50,7 +50,7 @@ class CreateJobTemplate(BaseSubCommand):
             return job_asset_name_list
             
 
-        from job.cli import JobTemplate
+        from job.templateEngine import JobTemplate
         from job.utils import setup_logger, get_log_level_from_options
         from os import environ
         log_level = get_log_level_from_options(self.cli_options)
