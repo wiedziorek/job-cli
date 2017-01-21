@@ -25,17 +25,17 @@ else:
 
 
 class JobEnvironment(object):
-    options  = None
+    cli_options  = None
     job_path = None
-    def __init__(self, log_level='INFO', options=None):
+    def __init__(self, cli_options, log_level='INFO'):
         from job.cli import JobTemplate
-        self.options = options
-        self.job_name  = self.options['PROJECT']
-        self.job_group = self.options['TYPE']
-        self.job_asset = self.options['ASSET']
+        self.cli_options = cli_options
+        self.job_name  = self.cli_options['PROJECT']
+        self.job_group = self.cli_options['TYPE']
+        self.job_asset = self.cli_options['ASSET']
         self.log_level = log_level
-        if self.options['--root']:
-            root = self.options['--root']
+        if self.cli_options['--root']:
+            root = self.cli_options['--root']
         else:
             root = None
 
@@ -48,7 +48,7 @@ class JobEnvironment(object):
             kwargs['root']  = root
 
         self.job_template = JobTemplate(**kwargs)
-        if not self.options['--no-local-schema']:
+        if not self.cli_options['--no-local-schema']:
             local_schema_path = self.job_template.get_local_schema_path()
             self.job_template.load_schemas(local_schema_path)
             super(JobTemplate, self.job_template).__init__(self.job_template.schema, "job", **kwargs)
@@ -65,9 +65,9 @@ class JobEnvironment(object):
 
 
 class JobRezEnvironment(JobEnvironment):
-    def __init__(self, log_level='INFO', options=None):
-        super(JobRezEnvironment, self).__init__(log_level=log_level, options=options)
-        self.options = options
+    def __init__(self, cli_options, log_level='INFO'):
+        super(JobRezEnvironment, self).__init__(cli_options, log_level=log_level)
+        self.cli_options = cli_options
         self.data    = {}
         from rez import config
         self.rez_config = config.create_config()
@@ -127,29 +127,29 @@ class SetJobEnvironment(BaseSubCommand):
         log_level = get_log_level_from_options(self.cli_options)
         self.logger = setup_logger("Plugin", log_level=log_level)
 
-        temp_job_package_path = os.path.join(os.getenv("HOME"), ".job")
-        if not os.path.isdir(temp_job_package_path):
-            os.mkdir(temp_job_package_path)
+        user_job_package_path = os.path.join(os.getenv("HOME"), ".job")
+        if not os.path.isdir(user_job_package_path):
+            os.mkdir(user_job_package_path)
 
-        context   = JobRezEnvironment(log_level, self.cli_options)
-        package_paths = [temp_job_package_path] + context.rez_config.packages_path
+        rez_context_maker = JobRezEnvironment(self.cli_options, log_level=log_level)
+        package_paths     = [user_job_package_path] + rez_context_maker.rez_config.packages_path
 
 
         # Reading options from command line and saved in job.opt(s)
         # How to make it cleaner?
         rez_package_names = []
         # Job option pass:
-        if "--rez" in context.job_template.job_options:
-            rez_package_names += context.job_template.job_options['--rez']
+        if "--rez" in rez_context_maker.job_template.job_options:
+            rez_package_names += rez_context_maker.job_template.job_options['--rez']
         # Command line pass:
         if self.cli_options['--rez']:
             rez_package_names += self.cli_options['--rez']
-        rez_package_names += [context.rez_name]
+        rez_package_names += [rez_context_maker.rez_name]
 
         # Lets try if packages was already created:
-        if not get_latest_package(context.data['name'], range_=context.data['version'], paths=[temp_job_package_path]):
-            self.logger.warning("Not package %s found... creating it.", context.rez_name )
-            if not context(path=temp_job_package_path):
+        if not get_latest_package(rez_context_maker.data['name'], range_=rez_context_maker.data['version'], paths=[user_job_package_path]):
+            self.logger.warning("Not package %s found... creating it.", rez_context_maker.rez_name )
+            if not rez_context_maker(path=user_job_package_path):
                 self.logger.exception("Somehting went wrong. can't set. %s", OSError)
                 print "Somehting went wrong. can't set."
                 raise OSError
