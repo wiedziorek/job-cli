@@ -1,4 +1,4 @@
-from .base import Base
+from .base import BaseSubCommand
 
 import sys, os
 from glob import glob
@@ -112,7 +112,7 @@ class JobRezEnvironment(JobEnvironment):
         variant.install(path)
 
 
-class SetJobEnvironment(Base):
+class SetJobEnvironment(BaseSubCommand):
     """ Sub command which performs setup of the environment per job.
     """
  
@@ -124,14 +124,14 @@ class SetJobEnvironment(Base):
         from rez.packages_ import get_latest_package
         from job.utils import setup_logger, get_log_level_from_options
 
-        log_level = get_log_level_from_options(self.options)
+        log_level = get_log_level_from_options(self.cli_options)
         self.logger = setup_logger("Plugin", log_level=log_level)
 
         temp_job_package_path = os.path.join(os.getenv("HOME"), ".job")
         if not os.path.isdir(temp_job_package_path):
             os.mkdir(temp_job_package_path)
 
-        context   = JobRezEnvironment(log_level, self.options)
+        context   = JobRezEnvironment(log_level, self.cli_options)
         package_paths = [temp_job_package_path] + context.rez_config.packages_path
 
 
@@ -142,8 +142,8 @@ class SetJobEnvironment(Base):
         if "--rez" in context.job_template.options:
             rez_package_names += context.job_template.options['--rez']
         # Command line pass:
-        if self.options['--rez']:
-            rez_package_names += self.options['--rez']
+        if self.cli_options['--rez']:
+            rez_package_names += self.cli_options['--rez']
         rez_package_names += [context.rez_name]
 
         # Lets try if packages was already created:

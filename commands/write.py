@@ -1,6 +1,6 @@
-from .base import Base
+from .base import BaseSubCommand
 
-class WriteShotgun(Base):
+class WriteShotgun(BaseSubCommand):
     """ Sub command which finds Shotgun project.
     """
     

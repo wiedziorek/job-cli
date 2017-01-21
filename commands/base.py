@@ -1,12 +1,12 @@
 
 
 
-class Base(object):
+class BaseSubCommand(object):
     """A base command."""
     logger = None
  
     def __init__(self, options, *args, **kwargs):
-        self.options = options
+        self.cli_options = options
         self.args = args
         self.kwargs = kwargs
 
@@ -17,7 +17,7 @@ class Base(object):
         log_level = logging.INFO
         # This is ugly, subcommand should extend list of options (like plugin)
         # not rely on bin/job to provide corrent switches.
-        _opt = self.options
+        _opt = self.cli_options
         if options:
             _opt = options
         if _opt['--log-level']:

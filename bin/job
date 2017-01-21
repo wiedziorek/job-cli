@@ -55,7 +55,7 @@ def get_sub_command(options):
         building-simple-cli-interfaces-in-python
     """
     import commands
-    from commands.base import Base
+    from commands.base import BaseSubCommand
     from inspect import getmembers, isclass
     subcommand = None  
     for k, v in options.iteritems():
@@ -64,8 +64,8 @@ def get_sub_command(options):
         module = getattr(commands, k) 
         candidates = [cls[1] for cls in getmembers(module, isclass)]
         # We are only interested in classes derived from Base:
-        subcommand = [cls for cls in candidates if issubclass(cls, Base) \
-                      and cls != Base][0]
+        subcommand = [cls for cls in candidates if issubclass(cls, BaseSubCommand) \
+                      and cls != BaseSubCommand][0]
         return subcommand
     return
     

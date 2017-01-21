@@ -1,6 +1,6 @@
-from .base import Base
+from .base import BaseSubCommand
 
-class ReadShotgun(Base):
+class ReadShotgun(BaseSubCommand):
     """ Sub command which finds Shotgun project.
     """
     
