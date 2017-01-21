@@ -18,7 +18,9 @@ class ShotgunPlugin(object):
 
         # Create connection.
         self.sg = sgtk.util.shotgun.create_sg_connection()
-        return True
+        
+        if self.sg:
+            return True
 
     def get_sg_asset_type(self, ha_type):
         if ha_type == "char":

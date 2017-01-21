@@ -5,8 +5,8 @@ class BaseSubCommand(object):
     """A base command."""
     logger = None
  
-    def __init__(self, options, *args, **kwargs):
-        self.cli_options = options
+    def __init__(self, cli_options, *args, **kwargs):
+        self.cli_options = cli_options
         self.args = args
         self.kwargs = kwargs
 
