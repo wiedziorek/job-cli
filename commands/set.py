@@ -39,7 +39,7 @@ class JobEnvironment(object):
         else:
             root = None
 
-          # Pack arguments so we can ommit None one (like root):
+        # Pack arguments so we can ommit None one (like root):
         kwargs = {}
         kwargs['job_name']  = self.job_name
         kwargs['job_group'] = self.job_group
@@ -122,12 +122,15 @@ class SetJobEnvironment(Base):
         from tempfile import mkdtemp
         from rez.resolved_context import ResolvedContext
         from rez.packages_ import get_latest_package
+        from job.utils import setup_logger, get_log_level_from_options
+
+        log_level = get_log_level_from_options(self.options)
+        self.logger = setup_logger("Plugin", log_level=log_level)
 
         temp_job_package_path = os.path.join(os.getenv("HOME"), ".job")
         if not os.path.isdir(temp_job_package_path):
             os.mkdir(temp_job_package_path)
 
-        log_level = self.get_log_level_from_options(self.options)
         context   = JobRezEnvironment(log_level, self.options)
         package_paths = [temp_job_package_path] + context.rez_config.packages_path
 
@@ -144,9 +147,10 @@ class SetJobEnvironment(Base):
         rez_package_names += [context.rez_name]
 
         # Lets try if packages was already created:
-        if not get_latest_package(context.data['name'], paths=temp_job_package_path):
-            print "New package?"
+        if not get_latest_package(context.data['name'], range_=context.data['version'], paths=[temp_job_package_path]):
+            self.logger.warning("Not package %s found... creating it.", context.rez_name )
             if not context(path=temp_job_package_path):
+                self.logger.exception("Somehting went wrong. can't set. %s", OSError)
                 print "Somehting went wrong. can't set."
                 raise OSError
         
