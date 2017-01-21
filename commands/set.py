@@ -139,8 +139,8 @@ class SetJobEnvironment(BaseSubCommand):
         # How to make it cleaner?
         rez_package_names = []
         # Job option pass:
-        if "--rez" in context.job_template.options:
-            rez_package_names += context.job_template.options['--rez']
+        if "--rez" in context.job_template.job_options:
+            rez_package_names += context.job_template.job_options['--rez']
         # Command line pass:
         if self.cli_options['--rez']:
             rez_package_names += self.cli_options['--rez']

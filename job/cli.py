@@ -477,13 +477,15 @@ class JobTemplate(LocationTemplate):
         from plugin import PluginManager 
         manager = PluginManager()
 
-        self.options_reader = manager.get_plugin_by_name("FileOptionReader")
-        self.logger.debug("Choosing option reader: %s", self.options_reader)
+        self.job_options_reader = manager.get_plugin_by_name("FileOptionReader")
+        self.logger.debug("Choosing option reader: %s", self.job_options_reader)
 
-        # We oddly add options attrib to self here. 
-        self.options = self.options_reader(self)
-        if not self.options:
-            self.logger.debug("Can't get options for a job! %s", self.options_reader.error)
+        # We oddly add options attrib to self here.
+        # TOD): Consider moving it to JobEnvironment class once we will move it 
+        # to cli from set.py
+        self.job_options = self.job_options_reader(self)
+        if not self.job_options:
+            self.logger.debug("Can't get options for a job! %s", self.job_options_reader.error)
 
     def get_local_schema_path(self):
         """ Once we know where to look for we may want to refer to
