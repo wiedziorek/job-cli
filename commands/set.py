@@ -147,11 +147,14 @@ class SetJobEnvironment(BaseSubCommand):
         rez_package_names += [rez_context_maker.rez_name]
 
         # Lets try if packages was already created:
-        if not get_latest_package(rez_context_maker.data['name'], range_=rez_context_maker.data['version'], paths=[user_job_package_path]):
-            self.logger.warning("Not package %s found... creating it.", rez_context_maker.rez_name )
+        if not get_latest_package(rez_context_maker.data['name'], \
+            range_=rez_context_maker.data['version'], \
+            paths=[user_job_package_path]):
+
+            self.logger.warning("Not package %s found... creating it.", rez_context_maker.rez_name)
+
             if not rez_context_maker(path=user_job_package_path):
                 self.logger.exception("Somehting went wrong. can't set. %s", OSError)
-                print "Somehting went wrong. can't set."
                 raise OSError
         
         r = ResolvedContext(rez_package_names, package_paths=package_paths)
