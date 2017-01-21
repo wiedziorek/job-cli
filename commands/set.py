@@ -134,6 +134,9 @@ class SetJobEnvironment(BaseSubCommand):
         rez_context_maker = JobRezEnvironment(self.cli_options, log_level=log_level)
         package_paths     = [user_job_package_path] + rez_context_maker.rez_config.packages_path
 
+        # from job.plugin import PluginManager
+        # manager = PluginManager(self.cli_options)
+        # print manager._plugins_store
 
         # Reading options from command line and saved in job.opt(s)
         # How to make it cleaner?

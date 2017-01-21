@@ -54,12 +54,12 @@ class PluginManager(object):
     type = None
     def __init__(self, *args, **kwargs):
         from job.utils import get_log_level_from_options
-        from logging import INFO
+        from logging import INFO, DEBUG
         self.args   = args
         self.kwargs = kwargs
         self.last_error = None
         self.last_info  = None
-        self.options    = None
+        self.cli_options= None
 
 
         # FIXME!!! Clearly passing options (commandline) is not resolved now.
@@ -71,6 +71,7 @@ class PluginManager(object):
         # 2. Carry cli options docopt from object to object allowing commands and plugins to
         # use it as they like. This is fishy, since in case of changes in cli, all objects, and plugs
         # will have to accomodate to this.
+
         self.log_level  = INFO
         self.logger = setup_logger("Plugin", log_level=self.log_level)
 
@@ -78,7 +79,7 @@ class PluginManager(object):
             self.options = kwargs['options']
             self.log_level = get_log_level_from_options(self.options)
         else:
-            self.logger.debug("PluginManager must be provided with Job option class (dict).")
+            self.logger.debug("PluginManager must be provided with cli_options dict.")
              
         self.logger = setup_logger("Plugin", log_level=self.log_level) # FIXME
         super(PluginManager, self).__init__()
