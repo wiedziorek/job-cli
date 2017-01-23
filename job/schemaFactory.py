@@ -49,19 +49,19 @@ class SchemaInlineModel(Model):
 
 class SchemaModel(Model):
     user_dirs  = BooleanType(required=True) 
-    permission = DictType(BooleanType)
-    ownership  = DictType(StringType)
+    permission = DictType(BooleanType, required=False)
+    ownership  = DictType(StringType, required=False)
     job_asset_name = StringType(required=True)
-    sub_dirs       = ListType(DictType(StringType))
+    sub_dirs       = ListType(DictType(StringType), required=False)
     job_asset_type = StringType(required=True)
     names          = ListType(StringType, required=True)
-    link_root      = StringType()
+    link_root      = StringType(required=False)
     is_link        = BooleanType(required=True)
-    link_target    = PathTemplateType()
-    root           = StringType()
+    link_target    = PathTemplateType(required=False)
+    root           = StringType(required=False)
     job_current    = StringType(required=True)
-    path_template  = PathTemplateType()
-    local_schema_path = DictType(PathTemplateType)
+    path_template  = PathTemplateType(required=False)
+    local_schema_path = DictType(PathTemplateType, required=False)
 
 schemafile = '/home/symek/work/job-cli/job/schema/job.schema'
 with open(schemafile) as file:
