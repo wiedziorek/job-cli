@@ -1,7 +1,7 @@
 [submodule "docopt"]
 	path = docopt
 	url = https://github.com/docopt/docopt.git
+
 [submodule "schematics"]
 	path = schematics
 	url = https://github.com/schematics/schematics.git
-
