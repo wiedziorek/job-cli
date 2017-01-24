@@ -1,6 +1,6 @@
-from .base import Base
+from .base import BaseSubCommand
 
-class WriteShotgun(Base):
+class WriteShotgun(BaseSubCommand):
     """ Sub command which finds Shotgun project.
     """
     
@@ -8,6 +8,7 @@ class WriteShotgun(Base):
         """ Entry point for sub command.
         """
         from job.plugin import PluginManager
-        manager = PluginManager()
+        manager = PluginManager(options=self.cli_options)
         self.shotgun_writer = manager.get_plugin_by_name("ShotgunWriter")
-        print self.shotgun_writer(self.options)
+        if self.shotgun_writer:
+        	print self.shotgun_writer(self.options)

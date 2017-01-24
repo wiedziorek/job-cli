@@ -1,3 +1,48 @@
+from logging import INFO
+
+# https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+def setup_logger(name, preference_file = 'logging.json', 
+                       log_level       =  INFO):
+    """ Setup logging configuration.
+    """
+    from os.path import join, split, realpath, dirname, exists
+    import logging.config
+    from json import load
+
+    _path = dirname(realpath(__file__))
+    _path = join(_path, preference_file)
+
+    if exists(_path):
+        with open(_path, 'rt') as file:
+            config = load(file)
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=log_level)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
+
+    return logger
+
+
+def get_log_level_from_options(self, options={}):
+    """ This is ugly.
+    """
+    import logging
+    log_level = logging.INFO
+
+    if not "--log-level" in options:
+        return log_level
+
+    if not options['--log-level']:
+        return log_level
+
+    try:
+        log_level = getattr(logging, _opt['--log-level'])
+    except:
+        pass   
+
+    return log_level
 
 
 # http://stackoverflow.com/questions/3237678/\

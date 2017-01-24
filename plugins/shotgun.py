@@ -1,21 +1,26 @@
-class ShotgunPlugin(object):
+STUDIO_SGTK_PATH = "/STUDIO/sgtk/studio/install/core/python"
 
-    def __init__(self):
-        # Import Shotgun Toolkit module.
+class ShotgunPlugin(object):
+    logger = None
+    def register_signals(self):
         import sys
-        sgtk_path = "/STUDIO/sgtk/studio/install/core/python"
-        if not sgtk_path in sys.path:
-            sys.path.append(sgtk_path)
         try:
             import sgtk
         except ImportError, e:
-            print "Cannot import sgtk.", e
-            raise ImportError
+            sys.path.append(STUDIO_SGTK_PATH)
+            try:
+                import sgtk
+            except:
+                self.logger.debug("Cannot import sgtk, %s", e)
+                return False
+
+        self.logger.debug("%s registering as %s", self.name, self.type)
+
         # Create connection.
         self.sg = sgtk.util.shotgun.create_sg_connection()
-
-    def register_signals(self):
-        print "I am %s and register as the %s" % (self.name, self.type)
+        
+        if self.sg:
+            return True
 
     def get_sg_asset_type(self, ha_type):
         if ha_type == "char":

@@ -1,6 +1,6 @@
-from .base import Base
+from .base import BaseSubCommand
 
-class ReadShotgun(Base):
+class ReadShotgun(BaseSubCommand):
     """ Sub command which finds Shotgun project.
     """
     
@@ -8,6 +8,9 @@ class ReadShotgun(Base):
         """ Entry point for sub command.
         """
         from job.plugin import PluginManager
-        manager = PluginManager()
+        manager = PluginManager(options=self.cli_options)
         self.shotgun_reader = manager.get_plugin_by_name("ShotgunReader")
-        print self.shotgun_reader(self.options)
+        if self.shotgun_reader:
+        	print self.shotgun_reader(self.options)
+        else:
+        	print "Can't get shotgun_reader"

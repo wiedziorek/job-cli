@@ -3,19 +3,21 @@
 
 Usage:
   job
-  job create PROJECT [TYPE ASSET] [--log_level=INFO --root=prefix --no_local_schema]
-  job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log_level=INFO --root=prefix]
+  job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema]
+  job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log-level=INFO --root=prefix]
   job archive PROJECT 
-  job find PROJECT (asset|shot) [FIELDS...]
+  job read PROJECT  (asset|shot) [FIELDS...]
+  job write PROJECT (asset|shot) [FIELDS...]
   job (-h | --help)
   job --version
+
 
 Options:
                         No options -> "job set sandbox user $USER"
   -h --help             Show this screen.
   --version             Show version.
-  --log_level=<level>   Log level of subcommands (INFO | DEBUG)
-  --no_local_schema     Disable savig/loading local copy of schema on 'create' 
+  --log-level=<level>   Log level of subcommands (INFO | DEBUG)
+  --no-local-schema     Disable savig/loading local copy of schema on 'create' 
   --root=<prefix>       Overrides root directory (only for debuging purposes!) 
 """
 
@@ -53,7 +55,7 @@ def get_sub_command(options):
         building-simple-cli-interfaces-in-python
     """
     import commands
-    from commands.base import Base
+    from commands.base import BaseSubCommand
     from inspect import getmembers, isclass
     subcommand = None  
     for k, v in options.iteritems():
@@ -62,13 +64,13 @@ def get_sub_command(options):
         module = getattr(commands, k) 
         candidates = [cls[1] for cls in getmembers(module, isclass)]
         # We are only interested in classes derived from Base:
-        subcommand = [cls for cls in candidates if issubclass(cls, Base) \
-                      and cls != Base][0]
+        subcommand = [cls for cls in candidates if issubclass(cls, BaseSubCommand) \
+                      and cls != BaseSubCommand][0]
         return subcommand
     return
     
 def main():
-    from job.cli import setup_logger
+    from job.utils import setup_logger
     logger = setup_logger("Job")
     options = docopt(__doc__, version='job version 0.0.1')
     command = get_sub_command(options)

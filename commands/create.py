@@ -1,6 +1,6 @@
-from .base import Base
+from .base import BaseSubCommand
 
-class CreateJobTemplate(Base):
+class CreateJobTemplate(BaseSubCommand):
     """ Sub command which performs creation of disk directories
        based on schemas.
     """
@@ -50,16 +50,17 @@ class CreateJobTemplate(Base):
             return job_asset_name_list
             
 
-        from job.cli import JobTemplate, setup_logger
+        from job.templateEngine import JobTemplate
+        from job.utils import setup_logger, get_log_level_from_options
         from os import environ
-        log_level = self.get_log_level_from_options()
+        log_level = get_log_level_from_options(self.cli_options)
 
-        job_name  = self.options['PROJECT']
-        job_group = self.options['TYPE']
-        job_asset = self.options['ASSET']
+        job_name  = self.cli_options['PROJECT']
+        job_group = self.cli_options['TYPE']
+        job_asset = self.cli_options['ASSET']
 
-        if self.options['--root']:
-            root = self.options['--root']
+        if self.cli_options['--root']:
+            root = self.cli_options['--root']
         else:
             root = None
 
@@ -87,7 +88,7 @@ class CreateJobTemplate(Base):
                 job = JobTemplate(**kwargs)
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:
-                if not self.options['--no_local_schema']:
+                if not self.cli_options['--no-local-schema']:
                     local_schema_path = job.get_local_schema_path()
                     job.load_schemas(local_schema_path)
                     super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
@@ -99,11 +100,11 @@ class CreateJobTemplate(Base):
         """ Entry point for sub command.
         """
 
-        if self.options['create']:
+        if self.cli_options['create']:
             job = self.create_command()
         # FIXME: This is temporary.
-        if job and not self.options['--no_local_schema'] and \
-        self.options['PROJECT'] and not self.options['TYPE']:
+        if job and not self.cli_options['--no-local-schema'] and \
+        self.cli_options['PROJECT'] and not self.cli_options['TYPE']:
             job.dump_local_templates()
 
 
