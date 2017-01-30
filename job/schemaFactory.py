@@ -6,9 +6,9 @@ from schematics.types import ListType, ModelType, DictType, PolyModelType
 from schematics import exceptions
 import json
 
-def isPathTemplateType(value):
-    if not '@' in value and not "/>" in value:
-        raise exceptions.ValidationError("This doesn't seem to be path template.")
+# def isPathTemplateType(value):
+#     if not '@' in value and not "/>" in value:
+#         raise exceptions.ValidationError("This doesn't seem to be path template.")
 
 
 class PathTemplateType(BaseType):
@@ -23,7 +23,6 @@ class PathTemplateType(BaseType):
     #     super(PathTemplateType, self).__init__(validators=validators)
 
     def validate_pathtemplate(self, value):
-        raise exceptions.ValidationError("This doesn't seem to be path template.")
         if not '@' in value or not "/>" in value:
             raise exceptions.ValidationError("This doesn't seem to be path template.")
 
@@ -69,9 +68,13 @@ with open(schemafile) as file:
 
 print schema
 job = SchemaModel(schema)
+# print job.validate()
 print json.dumps(job.to_primitive(), indent=4)
 
 # print job.path_template
-# tmp = PathTemplateType()
+tmp = PathTemplateType("@root/@job_name/@job_name/@job_name/dailies/@job_asset")
+tmp.validate("@root/@job_name/@job_name/@job_name/dailies/@job_asset_type")
 
+o = job.ownership
+# print job.to_native()
 
