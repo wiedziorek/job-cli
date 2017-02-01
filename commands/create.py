@@ -50,41 +50,41 @@ class CreateJobTemplate(BaseSubCommand):
             return job_asset_name_list
             
 
-        from job.templateEngine import JobTemplate
+        from job.template import JobTemplate
         from job.utils import setup_logger, get_log_level_from_options
         from os import environ
         log_level = get_log_level_from_options(self.cli_options)
 
-        job_name  = self.cli_options['PROJECT']
-        job_group = self.cli_options['TYPE']
-        job_asset = self.cli_options['ASSET']
+        job_current    = self.cli_options['PROJECT']
+        job_asset_type = self.cli_options['TYPE']
+        job_asset_name = self.cli_options['ASSET']
 
         if self.cli_options['--root']:
             root = self.cli_options['--root']
         else:
             root = None
 
-        if not job_group or not job_asset:
-            job_group = job_name
-            job_asset = job_name
+        if not job_asset_type or not job_asset_name:
+            job_asset_type = job_current
+            job_asset_name = job_current
 
 
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
-        kwargs['job_name']  = job_name
-        kwargs['job_group'] = job_group
+        kwargs['job_current']  = job_current
+        kwargs['job_asset_type'] = job_asset_type
         kwargs['log_level'] = log_level
         if root:
             kwargs['root']  = root
 
         # Asset may contain range expression which we might want to expand:
-        job_group_range = create_job_asset_range(job_group, number_mult=1, zeros=2)
-        job_asset_range = create_job_asset_range(job_asset)
+        job_asset_type_range = create_job_asset_range(job_asset_type, number_mult=1, zeros=2)
+        job_asset_range = create_job_asset_range(job_asset_name)
 
-        for group in job_group_range:
-            kwargs['job_group'] = group
+        for group in job_asset_type_range:
+            kwargs['job_asset_type'] = group
             for asset in job_asset_range:
-                kwargs['job_asset'] = asset
+                kwargs['job_asset_name'] = asset
                 job = JobTemplate(**kwargs)
                 # We need to reinitialize Job() in case we want to find
                 # local schemas:

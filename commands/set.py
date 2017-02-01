@@ -28,11 +28,11 @@ class JobEnvironment(object):
     cli_options  = None
     job_path = None
     def __init__(self, cli_options, log_level='INFO'):
-        from job.templateEngine import JobTemplate
-        self.cli_options = cli_options
-        self.job_name  = self.cli_options['PROJECT']
-        self.job_group = self.cli_options['TYPE']
-        self.job_asset = self.cli_options['ASSET']
+        from job.template import JobTemplate
+        self.cli_options    = cli_options
+        self.job_current    = self.cli_options['PROJECT']
+        self.job_asset_type = self.cli_options['TYPE']
+        self.job_asset_name = self.cli_options['ASSET']
         self.log_level = log_level
         if self.cli_options['--root']:
             root = self.cli_options['--root']
@@ -41,9 +41,9 @@ class JobEnvironment(object):
 
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
-        kwargs['job_name']  = self.job_name
-        kwargs['job_group'] = self.job_group
-        kwargs['log_level'] = self.log_level
+        kwargs['job_current']    = self.job_current
+        kwargs['job_asset_type'] = self.job_asset_type
+        kwargs['log_level']      = self.log_level
         if root:
             kwargs['root']  = root
 
@@ -71,20 +71,20 @@ class JobRezEnvironment(JobEnvironment):
         self.data    = {}
         from rez import config
         self.rez_config = config.create_config()
-        self.rez_name  = "%s-%s-%s" % (self.job_name, 
-                                       self.job_group, 
-                                       self.job_asset)
+        self.rez_name  = "%s-%s-%s" % (self.job_current, 
+                                       self.job_asset_type, 
+                                       self.job_asset_name)
 
-        self.rez_version = "%s-%s" % (self.job_group, self.job_asset)
+        self.rez_version = "%s-%s" % (self.job_asset_type, self.job_asset_name)
 
-        commands = self.create_exports((('JOB_CURRENT',    self.job_name), 
-                                        ('JOB_ASSET_TYPE', self.job_group),
-                                        ('JOB_ASSET_NAME', self.job_asset),
+        commands = self.create_exports((('JOB_CURRENT',    self.job_current), 
+                                        ('JOB_ASSET_TYPE', self.job_asset_type),
+                                        ('JOB_ASSET_NAME', self.job_asset_name),
                                         ('JOB', self.job_path)))
 
 
-        data = {'version': self.rez_version, 'name': self.job_name, 
-                'uuid'   : 'repository.%s' % self.job_name,
+        data = {'version': self.rez_version, 'name': self.job_current, 
+                'uuid'   : 'repository.%s' % self.job_current,
                 'variants':[],
                 'commands': commands}
 

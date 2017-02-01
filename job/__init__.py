@@ -7,4 +7,4 @@
 # won't break anyting.
 import plugins
 import schematics
-import schemaFactory
+import schema

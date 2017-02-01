@@ -1,0 +1,8 @@
+{ 
+    "version"  : "0.1.0",
+    "sub_dirs": [{"type": "location", "name": "ifd", "options": {"permission": 
+    {"group": true, "others": true} }} ],
+    "names": ["farm"], 
+    "is_link": false, 
+    "link_target": null
+}

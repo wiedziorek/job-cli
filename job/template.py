@@ -62,10 +62,18 @@ class LocationTemplate(dict):
     def __getitem__(self, key):
         """ LocationTemplates are nested inside each othter. This custom getter
             looks for a key locally, and if not succeed, looks up the parents 
-            recursively.
+            recursively. 
+
+            NOTE: 'None' value is treated as if a key wasn't present,
+            whereas anything else evaluated by Python to 'False' 
+            is interpreted as correct value and returned. 
         """
         if key in self.keys():
-            return super(LocationTemplate, self).__getitem__(key)
+            value = super(LocationTemplate, self).__getitem__(key)
+            # See note above:
+            if value == None and self.parent_template:
+               return self.parent_template[key]
+            return value
         else:
             # We are at a root level, and still no value... 
             if self.parent_template == None:
@@ -227,21 +235,32 @@ class LocationTemplate(dict):
 
 
 
-    def load_schemas(self, path, schema={}):
-        """Load json  schemas (*.schema) files defining LocationTemplates. 
+    def load_schemas(self, path, schema_shop={}):
+        """ Load json schemas (*.schema) files defining LocationTemplate. 
         """
         from glob import glob
-        location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
-        files    = glob(location)
-        self.logger.debug("Schemas found: %s", files)
+        import schema
+        schema_location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
+        schema_files    = glob(schema_location)
+        self.logger.debug("Schema files found: %s", schema_files)
 
-        for file in files:
+        for file in schema_files:
             with open(file) as file_object:
-                obj  = json.load(file_object)
+                candidate      = json.load(file_object)
+
+                if not "version" in candidate:
+                    raise KeyError(file)
+
+                schema_version = candidate['version']
+                schema_object  = schema.Factory().find(candidate, schema_version)
+
+                if not schema_object:
+                    self.logger.warning("Can't find parser for current schema: %s, %s", file, schema_version)
+                
                 name = os.path.split(file)[1]
                 name = os.path.splitext(name)[0]
-                schema[name] = obj
-        return schema
+                schema_shop[name] = schema_object# candidate #change make
+        return schema_shop
 
 
 
@@ -427,7 +446,7 @@ class JobTemplate(LocationTemplate):
                 device.make_link(path, link_path)
 
             elif targets[path]['link_target']:
-                if self['job_name'] == self['job_asset']:
+                if self['job_current'] == self['job_asset_name']:
                     return False 
                 link_path = self.expand_path_template(targets[path]['link_target'])
                 device.make_link(path, link_path)

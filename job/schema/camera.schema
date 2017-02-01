@@ -1,9 +1,9 @@
 {
+	"version"  : "0.1.0",
     "user_dirs": false, 
-    "sub_dirs":[{"name": "camera_formats", "type": "template", "options": null}],
+    "sub_dirs":[{"name": "camera_formats", "type": "template", "options": {}}],
     "names": ["camera"], 
     "link_root": null, 
     "is_link": false, 
-    "link_target": null, 
-    "root": "/PROD/dev"
+    "link_target": null
 }

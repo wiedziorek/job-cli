@@ -1,13 +1,14 @@
 {
+    "version"  : "0.1.0",
     "user_dirs": false, 
     "permission": {"group": false,
-    			  "others": false}, 
+    			         "others": false}, 
      "ownership": {"user" : null, 
      			  "group": null},
     "job_asset_name": "$USER", 
-    "sub_dirs": [{"name": "camera", "type": "template", "options": null}, 
-    	           {"name": "render", "type": "template", "options": null},
-                 {"name": "dailies","type": "template", "options": null}],
+    "sub_dirs": [{"name": "camera", "type": "template", "options": {}}, 
+    	           {"name": "render", "type": "template", "options": {}},
+                 {"name": "dailies","type": "template", "options": {}}],
     "job_asset_type": "user", 
     "names": [""], 
     "link_root": null, 
@@ -15,8 +16,8 @@
     "link_target": null, 
     "root": "/PROD/dev", 
     "job_current": "sandbox",
-    "path_template": "@root/>/@job_name/>/@job_group/>/@job_asset/>",
-    "local_schema_path": {"asset": "@root/>/@job_name/>/@job_group/>/@job_asset/>",
-                          "group": "@root/>/@job_name/>/@job_group/>/@job_group/>",
-                          "job"  : "@root/>/@job_name/>/@job_name/>/@job_name/>"}
+    "path_template": "@root/@job_current/@job_asset_type/@job_asset_name",
+    "local_schema_path": {"asset": "@root/@job_current/@job_asset_type/@job_asset_name",
+                          "group": "@root/@job_current/@job_asset_type/@job_asset_type",
+                          "job"  : "@root/@job_current/@job_current/@job_current"}
 }
