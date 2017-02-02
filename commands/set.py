@@ -43,6 +43,7 @@ class JobEnvironment(object):
         kwargs = {}
         kwargs['job_current']    = self.job_current
         kwargs['job_asset_type'] = self.job_asset_type
+        kwargs['job_asset_name'] = self.job_asset_name
         kwargs['log_level']      = self.log_level
         if root:
             kwargs['root']  = root
@@ -61,6 +62,12 @@ class JobEnvironment(object):
         for n, v in name_values:
             exports += ['export %s=%s' % (n, v)]
         return exports
+
+    def create_user_dir(self, path, user=None):
+        from getpass import getuser
+        if not user:
+            user = getuser()
+        return os.path.join(path, user)
 
 
 
@@ -144,6 +151,7 @@ class SetJobEnvironment(BaseSubCommand):
         # Job option pass:
         if "--rez" in rez_context_maker.job_template.job_options:
             rez_package_names += rez_context_maker.job_template.job_options['--rez']
+
         # Command line pass:
         if self.cli_options['--rez']:
             rez_package_names += self.cli_options['--rez']
@@ -159,11 +167,21 @@ class SetJobEnvironment(BaseSubCommand):
             if not rez_context_maker(path=user_job_package_path):
                 self.logger.exception("Somehting went wrong. can't set. %s", OSError)
                 raise OSError
-        
-        r = ResolvedContext(rez_package_names, package_paths=package_paths)
 
-        if r.success:
-            r.execute_shell()
+        context = ResolvedContext(rez_package_names, package_paths=package_paths)
+
+        # TODO:
+        # Finally we might be able to set, but first lets create user dirs,
+        # This should be generalized into pre-set, post-set registerable actions though
+        # Not even sure it should be here at all.
+        if context.success:
+            locations = rez_context_maker.job_template.render()
+            for loc in locations:
+                if locations[loc]['user_dirs']:
+                    user_dir = rez_context_maker.create_user_dir(loc)
+                    target   = { user_dir: locations[loc] }
+                    rez_context_maker.job_template.create(targets=target)
+            context.execute_shell()
 
         return True
        

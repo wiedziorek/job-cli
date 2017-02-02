@@ -417,7 +417,7 @@ class JobTemplate(LocationTemplate):
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
 
-    def create(self):
+    def create(self, targets=None):
         """ TODO: This is only fo testing purposes.
         """
         def create_link(path, targets):
@@ -458,7 +458,14 @@ class JobTemplate(LocationTemplate):
         device = self.plg_manager.get_plugin_by_name("LocalDevicePython")
         # device = LocalDevice(log_level=self.logger.level)
         device.logger.debug("Selecting device driver %s", device)
-        targets = self.render()
+
+        if not targets:
+            targets = self.render()
+
+        # Should we check what's commig here?
+        for key in targets:
+            assert(isinstance(targets[key], LocationTemplate) \
+                or issubclass(targets[key], LocationTemplate))
 
         for path in targets:
             device.make_dir(path)
