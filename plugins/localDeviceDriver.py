@@ -11,14 +11,14 @@ class LocalDevicePython(DeviceDriver, PluginManager):
 
     def __init__(self, log_level=INFO, **kwargs):
         name = self.__class__
-        self.log_level = log_level
+        # self.log_level = log_level
         # super(LocalDevicePython, self).__init__(**kwargs)
         # PluginManager.__init__(self, **kwargs)
         # from .utils import setup_logger
-        self.logger = setup_logger('LocalDevice', log_level=self.log_level)
+        # self.logger = setup_logger('LocalDevice', log_level=self.log_level)
 
     def register_signals(self):
-        self.logger.debug("Registering LocalDevicePython")
+        # self.logger.debug("Registering LocalDevicePython")
         return True
         
 

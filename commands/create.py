@@ -53,7 +53,7 @@ class CreateJobTemplate(BaseSubCommand):
         from job.template import JobTemplate
         from job.utils import setup_logger, get_log_level_from_options
         from os import environ
-        log_level = get_log_level_from_options(self.cli_options)
+        log_level = self.get_log_level_from_options(self.cli_options)
 
         job_current    = self.cli_options['PROJECT']
         job_asset_type = self.cli_options['TYPE']
@@ -70,12 +70,13 @@ class CreateJobTemplate(BaseSubCommand):
 
 
         # Pack arguments so we can ommit None one (like root):
+        # Should we standarize it with some class?
         kwargs = {}
-        kwargs['job_current']  = job_current
+        kwargs['job_current']    = job_current
         kwargs['job_asset_type'] = job_asset_type
-        kwargs['log_level'] = log_level
-        if root:
-            kwargs['root']  = root
+        kwargs['job_asset_name'] = None # To be set later in a loop
+        kwargs['log_level']      = log_level
+        kwargs['root']           = root if root else None
 
         # Asset may contain range expression which we might want to expand:
         job_asset_type_range = create_job_asset_range(job_asset_type, number_mult=1, zeros=2)
@@ -102,6 +103,7 @@ class CreateJobTemplate(BaseSubCommand):
 
         if self.cli_options['create']:
             job = self.create_command()
+
         # FIXME: This is temporary.
         if job and not self.cli_options['--no-local-schema'] and \
         self.cli_options['PROJECT'] and not self.cli_options['TYPE']:

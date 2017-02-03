@@ -301,7 +301,7 @@ class JobTemplate(LocationTemplate):
         # We make it pluggable since prefs/options might be
         # imported from database 
         from plugin import PluginManager 
-        self.plg_manager = PluginManager()
+        self.plg_manager = PluginManager(log_level=log_level)
 
         self.job_options_reader = self.plg_manager.get_plugin_by_name("FileOptionReader")
         self.logger.debug("Choosing option reader: %s", self.job_options_reader)
