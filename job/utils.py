@@ -38,7 +38,7 @@ def get_log_level_from_options(self, options={}):
         return log_level
 
     try:
-        log_level = getattr(logging, _opt['--log-level'])
+        log_level = getattr(logging, options['--log-level'])
     except:
         pass   
 
