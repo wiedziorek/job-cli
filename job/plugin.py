@@ -72,14 +72,10 @@ class PluginManager(object):
         # use it as they like. This is fishy, since in case of changes in cli, all objects, and plugs
         # will have to accomodate to this.
 
-        self.log_level  = INFO
-        self.logger = setup_logger("Plugin", log_level=self.log_level)
-
-        if 'options' in kwargs:
-            self.options = kwargs['options']
-            self.log_level = get_log_level_from_options(self.options)
-        else:
-            self.logger.debug("PluginManager must be provided with cli_options dict.")
+        # FIXME:
+        self.log_level = INFO
+        if 'log_level' in self.kwargs:
+            self.log_level = self.kwargs['log_level']
              
         self.logger = setup_logger("Plugin", log_level=self.log_level) # FIXME
         super(PluginManager, self).__init__()
@@ -112,4 +108,6 @@ class PluginManager(object):
         Return: First matching plugin. """
         for plugin in self.plugins:
             if plugin.name == name:
+                # FIXME: this is workaround...
+                plugin.logger = setup_logger('Plugin', log_level=self.log_level)
                 return plugin
