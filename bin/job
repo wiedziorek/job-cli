@@ -73,14 +73,14 @@ def get_sub_command(options):
 def main():
     from job.utils import setup_logger
     logger = setup_logger("Job")
-    options = docopt(__doc__, version='job version 0.0.1')
-    command = get_sub_command(options)
+    cli_options = docopt(__doc__, version='job version 0.0.1')
+    command = get_sub_command(cli_options)
     logger.debug("Command found %s", command)
 
     if not command:
         return
 
-    command = command(options)
+    command = command(cli_options)
     command.run()
 
 
