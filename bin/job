@@ -16,7 +16,7 @@ Options:
                         No options -> "job set sandbox user $USER"
   -h --help             Show this screen.
   --version             Show version.
-  --log-level=<level>   Log level of subcommands (INFO | DEBUG)
+  --log-level=<level>   Log level of subcommands (INFO | DEBUG) [default: INFO]
   --no-local-schema     Disable savig/loading local copy of schema on 'create' 
   --root=<prefix>       Overrides root directory (only for debuging purposes!) 
 """
