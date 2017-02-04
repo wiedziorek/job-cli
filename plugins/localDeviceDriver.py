@@ -11,14 +11,8 @@ class LocalDevicePython(DeviceDriver, PluginManager):
 
     def __init__(self, log_level=INFO, **kwargs):
         name = self.__class__
-        # self.log_level = log_level
-        # super(LocalDevicePython, self).__init__(**kwargs)
-        # PluginManager.__init__(self, **kwargs)
-        # from .utils import setup_logger
-        # self.logger = setup_logger('LocalDevice', log_level=self.log_level)
 
     def register_signals(self):
-        # self.logger.debug("Registering LocalDevicePython")
         return True
         
 
@@ -240,31 +234,44 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
 
         self.logger.debug("remove_write_permissions: %s (%s)", path, current_permissions & NO_WRITING)
 
-    def add_write_permissions(self, path, group=True, others=False):
+    def add_write_permissions(self, path, group=True, others=False, sudo=False):
         """ Set permissions flags according to provided params.
 
         Params:
             path:          The path to set permissions for.
             group, others: Permissions masks.
         """
+        from subprocess import Popen, PIPE
+        command = []
 
-        WRITING = stat.S_IWUSR 
+        # if not group and not others:
+            # return
+
+        if sudo:
+            command += ['sudo']
+
+        command += ["chmod", '-v']
+        permission_str = ""
+
         if group:
-            WRITING = WRITING | stat.S_IWGRP
+            permission_str += "g"
         if others:
-            WRITING = WRITING | stat.S_IWOTH
+            permission_str += "a"
 
-        current_permissions = stat.S_IMODE(os.lstat(path).st_mode)
+        permission_str += "+w"
 
-        try:
-            os.chmod(path, current_permissions | WRITING)
-        except:
-            self.logger.exception("Can't add write permission for %s", path)
+        command += [permission_str]
+        command += [path]
+
+        out, error = Popen(command, shell=False, stderr=PIPE, stdout=PIPE).communicate()
+
+        if error:
+            self.logger.exception("%s, %s", error, path)
             raise OSError
 
-        self.logger.debug("add_write_permissions: %s (%s)", path, current_permissions | WRITING)
+        self.logger.debug("%s (%s)", " ".join(command),  u'out')
 
-    def set_ownership(self, path, user=None, group=None):
+    def set_ownership(self, path, user=None, group=None, sudo=False):
         """ Sets the ownership of a path. 
 
         Params:
@@ -274,6 +281,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
         from grp import getgrnam
         from pwd import getpwnam, getpwuid
         from getpass import getuser
+        from subprocess import Popen, PIPE
 
         def get_user_id(path, user):
             """ """
@@ -302,11 +310,27 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
         uid = get_user_id(path, user)
         gid = get_group_id(path, group)
         #
-        try:
-            os.chown(path, uid, gid)
-        except:
-            self.logger.exception("Can't change ownership for %s", path)
-            raise OSError
+        command = []
+        if sudo:
+            command += ['sudo']
 
-        self.logger.debug("set_ownership: %s (%s, %s)", path, uid, gid)
+        if group:
+            command += ['chgrp -R', group, path]
+            out, err = Popen(command, shell=False, stdout=PIPE, stderr=PIPE).communicate()
+            if err:
+                self.logger.exception("Can't change ownership for %s", path)
+                raise OSError
+
+        command = []
+        if sudo:
+            command += ['sudo']
+           
+        if user:
+            command += ['chown -R', user, path]
+            out, err = Popen(command, shell=False, stdout=PIPE, stderr=PIPE).communicate()
+            if err:
+                self.logger.exception("Can't change ownership for %s", path)
+                raise OSError
+
+        self.logger.debug("set_ownership: %s (%s, %s)", path, user, group)
         return True

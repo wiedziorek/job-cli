@@ -455,7 +455,7 @@ class JobTemplate(LocationTemplate):
             
 
         # TODO: Device driver should be pluggable
-        device = self.plg_manager.get_plugin_by_name("LocalDevicePython")
+        device = self.plg_manager.get_plugin_by_name("LocalDeviceShell")
         # device = LocalDevice(log_level=self.logger.level)
         device.logger.debug("Selecting device driver %s", device)
 
