@@ -283,10 +283,10 @@ class JobTemplate(LocationTemplate):
             job.render() (children created recursively)
         """
         from os.path import join, split, realpath, dirname
-        from utils import setup_logger
+        from logger import LoggerFactory
 
         name = self.__class__.__name__
-        self.logger = setup_logger(name, log_level=log_level)
+        self.logger = LoggerFactory().get_logger(name, level=log_level)
 
         schema_locations  = [dirname(realpath(__file__))]
 

@@ -1,4 +1,4 @@
-from job.utils import ReadOnlyCacheAttrib, setup_logger
+from job.utils import ReadOnlyCacheAttrib
 
 class PluginType(object):
     class DeviceDriver(type):
@@ -76,8 +76,9 @@ class PluginManager(object):
         self.log_level = INFO
         if 'log_level' in self.kwargs:
             self.log_level = self.kwargs['log_level']
-             
-        self.logger = setup_logger("Plugin", log_level=self.log_level) # FIXME
+
+        from job.logger import LoggerFactory   
+        self.logger = LoggerFactory().get_logger("PluginManager", level=self.log_level) # FIXME
         super(PluginManager, self).__init__()
 
     @property
@@ -105,9 +106,11 @@ class PluginManager(object):
          is returned, which might not be the best policy ever...
 
         Params: string prepresenting plugin class.
-        Return: First matching plugin. """
+        Return: First matching plugin. 
+        """
+        from job.logger import LoggerFactory
         for plugin in self.plugins:
             if plugin.name == name:
                 # FIXME: this is workaround...
-                plugin.logger = setup_logger('Plugin', log_level=self.log_level)
+                plugin.logger = LoggerFactory().get_logger(name, level=self.log_level)
                 return plugin

@@ -129,10 +129,10 @@ class SetJobEnvironment(BaseSubCommand):
         from tempfile import mkdtemp
         from rez.resolved_context import ResolvedContext
         from rez.packages_ import get_latest_package
-        from job.utils import setup_logger, get_log_level_from_options
+        from job.logger import LoggerFactory
 
-        log_level = get_log_level_from_options(self.cli_options)
-        self.logger = setup_logger("Plugin", log_level=log_level)
+        log_level   = self.cli_options['--log-level']
+        self.logger = LoggerFactory().get_logger("Set", level=log_level)
 
         user_job_package_path = os.path.join(os.getenv("HOME"), ".job")
         if not os.path.isdir(user_job_package_path):
