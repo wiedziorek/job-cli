@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Jobb - better job.
+"""Job, vol 2.
 
 Usage:
   job
@@ -71,13 +71,22 @@ def get_sub_command(options):
     return
     
 def main():
-    from job.utils import setup_logger
-    logger = setup_logger("Job")
+    """ Minimal entry point for job-cli environment. This calls sub command from
+        job-cli/commands directory from where work starts happening.
+    """
+
+    from job.logger import LoggerFactory
     cli_options = docopt(__doc__, version='job version 0.0.1')
+
+    logger = LoggerFactory().get_logger("Job (main entry)", \
+        level=cli_options['--log-level'])
+
     command = get_sub_command(cli_options)
     logger.debug("Command found %s", command)
 
     if not command:
+        # This is temporary
+        print __doc__
         return
 
     command = command(cli_options)

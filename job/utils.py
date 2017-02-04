@@ -1,28 +1,28 @@
 from logging import INFO
 
 # https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-def setup_logger(name, preference_file = 'logging.json', 
-                       log_level       =  INFO):
-    """ Setup logging configuration.
-    """
-    from os.path import join, split, realpath, dirname, exists
-    import logging.config
-    from json import load
+# def setup_logger(name, preference_file = 'logging.json', 
+#                        log_level       =  INFO):
+#     """ Setup logging configuration.
+#     """
+#     from os.path import join, split, realpath, dirname, exists
+#     import logging.config
+#     from json import load
 
-    _path = dirname(realpath(__file__))
-    _path = join(_path, preference_file)
+#     _path = dirname(realpath(__file__))
+#     _path = join(_path, preference_file)
 
-    if exists(_path):
-        with open(_path, 'rt') as file:
-            config = load(file)
-        logging.config.dictConfig(config)
-    else:
-        logging.basicConfig(level=log_level)
+#     if exists(_path):
+#         with open(_path, 'rt') as file:
+#             config = load(file)
+#         logging.config.dictConfig(config)
+#     else:
+#         logging.basicConfig(level=log_level)
 
-    logger = logging.getLogger(name)
-    logger.setLevel(log_level)
+#     logger = logging.getLogger(name)
+#     logger.setLevel(log_level)
 
-    return logger
+#     return logger
 
 
 def get_log_level_from_options(self, options={}):
@@ -45,8 +45,7 @@ def get_log_level_from_options(self, options={}):
     return log_level
 
 
-# http://stackoverflow.com/questions/3237678/\
-# how-to-create-decorator-for-lazy-initialization-of-a-property
+# http://stackoverflow.com/questions/3237678/how-to-create-decorator-for-lazy-initialization-of-a-property
 class ReadOnlyCacheAttrib(object):    
     '''Computes attribute value and caches it in the instance.
     Source: Python Cookbook 

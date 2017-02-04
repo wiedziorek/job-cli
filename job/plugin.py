@@ -78,7 +78,7 @@ class PluginManager(object):
             self.log_level = self.kwargs['log_level']
 
         from job.logger import LoggerFactory   
-        self.logger = LoggerFactory().get_logger("PluginManager", level=self.log_level) # FIXME
+        self.logger = LoggerFactory().get_logger("PluginManager", level="DEBUG") # FIXME
         super(PluginManager, self).__init__()
 
     @property
@@ -95,9 +95,11 @@ class PluginManager(object):
             Params: type -> class(type) present in job.plugin.PluginType.
             Return: List of matchnig plugins 
                     (classes derived from job.plugin.PluginManager) """
+        from job.logger import LoggerFactory
         plg = []
         for plugin in self.plugins:
             if plugin.type == type:
+                plugin.logger = LoggerFactory().get_logger(plugin.name, level=self.log_level)
                 plg += [plugin]
         return plg
 

@@ -1,6 +1,5 @@
 from job.plugin import PluginManager, PluginType
 from deviceDriver import DeviceDriver
-from job.utils import setup_logger
 from logging import INFO
 import os, stat
 

@@ -57,7 +57,6 @@ class CreateJobTemplate(BaseSubCommand):
             need for updating SG to local storage.)
         """
         from job.template import JobTemplate
-        from job.utils import setup_logger, get_log_level_from_options
         from os import environ
         log_level = self.get_log_level_from_options(self.cli_options)
 

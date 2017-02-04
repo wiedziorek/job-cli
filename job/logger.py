@@ -1,3 +1,4 @@
+from utils import ReadOnlyCacheAttrib
 
 DEFAULT_LOGGER_CONFIG = """ {
     "version": 1,
@@ -85,18 +86,41 @@ class LoggerFactory(object):
             return k in self.__data
 
     def __init__(self):
+        """ Besides creating config for loggers,
+            sets paths for logging to files per user.
+        """
+        from os.path import join
         self.__config = self.Config()
+        self.__config['handlers']['info_file_handler']['filename']=\
+            join(self.job_user_home, u'info.log')
+        self.__config['handlers']['error_file_handler']['filename']=\
+            join(self.job_user_home, u'errors.log')
 
     @property
     def config(self):
         return self.__config
 
-    def get_logger(self, name, level='INFO'):
+    # http://stackoverflow.com/questions/4028904/how-to-get-the-home-directory-in-python
+    @ReadOnlyCacheAttrib
+    def job_user_home(self):
+        from os.path import expanduser, join, isdir
+        from os import mkdir
+        home = expanduser("~")
+        path = join(home, u".job")
+        if not isdir(path) and isdir(home):
+            try:
+                mkdir(path)
+            except:
+                raise IOError
+        return unicode(path)
+
+
+    def get_logger(self, name, level='DEBUG'):
         """ Isn't it too wasful?
         """
         import logging.config
         from logging import getLogger
-
+    
         if level not in self.__config['loggers']:
             level = 'INFO'
         if name not in self.__config['loggers']:
