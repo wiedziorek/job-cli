@@ -252,7 +252,7 @@ class LocationTemplate(dict):
                     raise KeyError(file)
 
                 schema_version = candidate['version']
-                schema_object  = schema.Factory().find(candidate, schema_version)
+                schema_object  = schema.Factory(log_level=self.logger.level).find(candidate, schema_version)
 
                 if not schema_object:
                     self.logger.warning("Can't find parser for current schema: %s, %s", file, schema_version)

@@ -147,6 +147,10 @@ class StaticDict(collections.MutableMapping):
 
 
 class Factory(object):
+    def __init__(self, log_level="INFO"):
+        from logger import LoggerFactory
+        self.logger = LoggerFactory().get_logger("SchemaFactory", log_level)
+
     def find(self, schema, version=None, be_nice=False, verbose=False):
         """ Returns to a caller (LocationTemplate subclasses mostly)
             a validated models made from provided dictonary. Raise 
@@ -156,6 +160,7 @@ class Factory(object):
         # Try first Job schema, it it fails, try child model:
         # This is because some fields are dengeours 
         # (job,group,asset ids mainly)
+        self.logger.debug("Using %s version", version)
 
         # FIXME: how to make it nicely?
         if "job_current" in schema:
