@@ -3,6 +3,9 @@ from deviceDriver import DeviceDriver
 from logging import INFO
 import os, stat
 
+# TODO: remove
+USE_SUDO = True
+
 class LocalDevicePython(DeviceDriver, PluginManager):
     name = "LocalDevicePython"
     type = PluginType.DeviceDriver
@@ -157,7 +160,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
         return True
         
 
-    def make_dir(self, path, sudo=False):
+    def make_dir(self, path, sudo=USE_SUDO):
         """ Uses Linux shell facility to create a directory tree.
         """
         from subprocess import Popen, PIPE
@@ -181,7 +184,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
             self.logger.exception("Couldn't make %s",  path)
             raise OSError
 
-    def make_link(self, path, link_path, sudo=False):
+    def make_link(self, path, link_path, sudo=USE_SUDO):
         from subprocess import Popen, PIPE
         command = []
         if os.path.exists(link_path):
@@ -209,7 +212,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
 
 
     # http://stackoverflow.com/questions/16249440/changing-file-permission-in-python
-    def remove_write_permissions(self, path, sudo=False):
+    def remove_write_permissions(self, path, sudo=USE_SUDO):
         """Remove write permissions from this path, while keeping all other permissions intact.
 
         Params:
@@ -233,7 +236,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
 
         self.logger.debug("remove_write_permissions: %s (%s)", path, current_permissions & NO_WRITING)
 
-    def add_write_permissions(self, path, group=True, others=False, sudo=False):
+    def add_write_permissions(self, path, group=True, others=False, sudo=USE_SUDO):
         """ Set permissions flags according to provided params.
 
         Params:
@@ -270,7 +273,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
 
         self.logger.debug("%s (%s)", " ".join(command),  u'out')
 
-    def set_ownership(self, path, user=None, group=None, sudo=False):
+    def set_ownership(self, path, user=None, group=None, sudo=USE_SUDO):
         """ Sets the ownership of a path. 
 
         Params:

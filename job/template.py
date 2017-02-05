@@ -393,11 +393,17 @@ class JobTemplate(LocationTemplate):
         prefix_path = os.path.join(prefix_path, postfix)
         prefix_path = os.path.expandvars(prefix_path)
 
+        # We assume that we always use driver whenever we want to touch storage.
+        # But we don't have system to choose this driver, what puts up in pretty
+        # much same spot, as touching files by hand (e.i. open())... FIXME.
+        # also, should we conver all os.path functionality!? 
+        device = self.plg_manager.get_plugin_by_name("LocalDeviceShell")
+
         # FIXME: This shouldn't be here:
         if not os.path.isdir(prefix_path):
             self.logger.warning("Schema location doesn't exists! %s", prefix_path)
             try:
-                os.mkdir(prefix_path)
+                device.make_dir(prefix_path)
                 self.logger.info("Making local schema location %s", prefix_path)
             except:
                 self.logger.exception("Can't make %s", prefix_path)
