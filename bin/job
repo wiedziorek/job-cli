@@ -76,7 +76,7 @@ def main():
     """
 
     from job.logger import LoggerFactory
-    cli_options = docopt(__doc__, version='job version 0.0.1')
+    cli_options = docopt(__doc__, version='job version 2.1.0')
 
     logger = LoggerFactory().get_logger("Job (main entry)", \
         level=cli_options['--log-level'])
