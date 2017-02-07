@@ -1,5 +1,4 @@
-from job.plugin import PluginManager, PluginType
-from deviceDriver import DeviceDriver
+from job.plugin import PluginManager, PluginType, DeviceDriver
 from logging import INFO
 import os, stat
 

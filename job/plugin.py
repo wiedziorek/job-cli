@@ -1,6 +1,14 @@
-from job.utils import ReadOnlyCacheAttrib
+from job.utils import ReadOnlyCacheAttrib, CachedMethod
+
+# In time we would probably make from it own big module, but for now it's 
+# OK to leave it here, as I suppose. PluginType is just enumerator, then we should have
+# an abstract class for every type of it. Finally we have two classes responsible for
+# initialization pluggins and providing them to consumers.
 
 class PluginType(object):
+    """ Enumeration for plugin types.
+        Nothing fancy atm (placeholder).
+    """
     class DeviceDriver(type):
         pass
     class OptionReader(type):
@@ -11,6 +19,34 @@ class PluginType(object):
         pass
     class PostRenderTempalateAction(type):
         pass
+
+
+class DeviceDriver():
+    """ Abstract class defining an interface to production storage.
+        Basic implementation does simply local storage manipulation via
+        shell or Python interface. More interesitng implementations
+        include remote execution or fuse virtual file systems.
+    """
+    # __metaclass__ conflicts with current plugin architecture.
+    # TODO: Reconsider changing one of it (plugins arch)
+    # __metaclass__ = abc.ABCMeta
+    # @abc.abstractmethod
+    def make_dir(self, path):
+        raise NotImplementedError('You must implement the run() method yourself!')
+    # @abc.abstractmethod
+    def make_link(self, path, targets):
+        raise NotImplementedError('You must implement the run() method yourself!')
+    # @abc.abstractmethod
+    def remove_write_permissions(self, path):
+        raise NotImplementedError('You must implement the run() method yourself!')
+    # @abc.abstractmethod
+    def add_write_permissions(self, path, group=True, others=False):
+        raise NotImplementedError('You must implement the run() method yourself!')
+    # @abc.abstractmethod
+    def set_ownership(self, path, user=None, group=None):
+        raise NotImplementedError('You must implement the run() method yourself!')
+
+
 
 class PluginRegister(type):
     """
@@ -61,17 +97,6 @@ class PluginManager(object):
         self.last_info  = None
         self.cli_options= None
 
-
-        # FIXME!!! Clearly passing options (commandline) is not resolved now.
-        # These are options:
-        # 1. Somehow I feel, we should clearly separate level:
-        #       a) ./bin/job command level passing user cli options to commands
-        #       b) commands should prepare all options 'manually' and send to JobTemplates / 
-        #          plugins only plain old python int/bools/vars, parsing all options by it self.
-        # 2. Carry cli options docopt from object to object allowing commands and plugins to
-        # use it as they like. This is fishy, since in case of changes in cli, all objects, and plugs
-        # will have to accomodate to this.
-
         # FIXME:
         self.log_level = INFO
         if 'log_level' in self.kwargs:
@@ -89,6 +114,7 @@ class PluginManager(object):
     def error(self):
         return self.last_error
 
+    @CachedMethod
     def get_plugin_by_type(self, type):
         """ Getter for plugins of type.
 
@@ -103,6 +129,7 @@ class PluginManager(object):
                 plg += [plugin]
         return plg
 
+    @CachedMethod
     def get_plugin_by_name(self, name):
         """ Getter for plugin by name. Currently first matching name
          is returned, which might not be the best policy ever...
@@ -118,7 +145,8 @@ class PluginManager(object):
                 return plugin
         self.logger.exception("Can't find specified plugin %s", name)
         raise OSError
-
+        
+    # @CanchedMethod
     def get_first_maching_plugin(self, prefered_plugin_names):
         """ Select first matching plugin from provided list of names.
 
