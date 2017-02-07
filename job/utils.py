@@ -1,30 +1,7 @@
-from logging import INFO
+import collections
+import functools
 
-# https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
-# def setup_logger(name, preference_file = 'logging.json', 
-#                        log_level       =  INFO):
-#     """ Setup logging configuration.
-#     """
-#     from os.path import join, split, realpath, dirname, exists
-#     import logging.config
-#     from json import load
-
-#     _path = dirname(realpath(__file__))
-#     _path = join(_path, preference_file)
-
-#     if exists(_path):
-#         with open(_path, 'rt') as file:
-#             config = load(file)
-#         logging.config.dictConfig(config)
-#     else:
-#         logging.basicConfig(level=log_level)
-
-#     logger = logging.getLogger(name)
-#     logger.setLevel(log_level)
-
-#     return logger
-
-
+# TODO: remove it.
 def get_log_level_from_options(self, options={}):
     """ This is ugly.
     """
@@ -44,14 +21,59 @@ def get_log_level_from_options(self, options={}):
 
     return log_level
 
+#https://wiki.python.org/moin/PythonDecoratorLibrary#Memoize
+# TODO: Support list arguments (whcih are not hashable
+# so we can't use it with this class)
+class CachedMethod(object):
+   """
+        Decorator. Caches a function's return value each time it is called.
+        If called later with the same arguments, the cached value is returned
+        (not reevaluated).
+        Example:
+            @CachedMethod
+            def fibonacci(n):
+               "Return the nth fibonacci number."
+               if n in (0, 1):
+                  return n
+               return fibonacci(n-1) + fibonacci(n-2)
+            print fibonacci(12)
+   """
+   def __init__(self, func):
+      self.func = func
+      self.cache = {}
+
+   def __call__(self, *args):
+      if not isinstance(args, collections.Hashable):
+         # uncacheable. a list, for instance.
+         # better to not cache than blow up.
+         return self.func(*args)
+      if args in self.cache:
+         return self.cache[args]
+      else:
+         value = self.func(*args)
+         self.cache[args] = value
+         return value
+
+   def __repr__(self):
+      '''Return the function's docstring.
+      '''
+      return self.func.__doc__
+
+   def __get__(self, obj, objtype):
+      '''Support instance methods.
+      '''
+      return functools.partial(self.__call__, obj)
+
+
 
 # http://stackoverflow.com/questions/3237678/how-to-create-decorator-for-lazy-initialization-of-a-property
 class ReadOnlyCacheAttrib(object):    
-    '''Computes attribute value and caches it in the instance.
-    Source: Python Cookbook 
-    Author: Denis Otkidach http://stackoverflow.com/users/168352/denis-otkidach
-    This decorator allows you to create a property which can be computed once and
-    accessed many times. Sort of like memoization
+    ''' 
+        Computes attribute value and caches it in the instance.
+        Source: Python Cookbook 
+        Author: Denis Otkidach http://stackoverflow.com/users/168352/denis-otkidach
+        This decorator allows you to create a property which can be computed once and
+        accessed many times. Sort of like memoization
     '''
     def __init__(self, method, name=None):
         self.method = method
