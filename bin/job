@@ -6,8 +6,8 @@ Usage:
   job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema]
   job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log-level=INFO --root=prefix]
   job archive PROJECT 
-  job read PROJECT  (asset|shot) [FIELDS...]
-  job write PROJECT (asset|shot) [FIELDS...]
+  job read  PROJECT [TYPE ASSET] [FIELDS...] [--log-level=INFO]
+  job write PROJECT [TYPE ASSET] [FIELDS...] [--log-level=INFO]
   job (-h | --help)
   job --version
 
