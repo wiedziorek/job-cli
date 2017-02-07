@@ -116,3 +116,24 @@ class PluginManager(object):
                 # FIXME: this is workaround...
                 plugin.logger = LoggerFactory().get_logger(name, level=self.log_level)
                 return plugin
+        self.logger.exception("Can't find specified plugin %s", name)
+        raise OSError
+
+    def get_first_maching_plugin(self, prefered_plugin_names):
+        """ Select first matching plugin from provided list of names.
+
+        Params: List with prefered plugins names.
+        Return: First matching plugin. 
+        """
+        from collections import Iterable
+        from job.logger  import LoggerFactory
+        
+        assert isinstance(prefered_plugin_names, Iterable)
+        installed_plg_names = [plugin.name for plugin in self.plugins]
+        for plugin_name in prefered_plugin_names:
+            if plugin_name in installed_plg_names:
+                plugin_instance = self.get_plugin_by_name(plugin_name)
+                # FIXME: this is workaround...
+                plugin_instance.logger  = LoggerFactory().get_logger(plugin_name, level=self.log_level)
+                return plugin_instance
+        return None

@@ -43,6 +43,8 @@ class LocationTemplate(dict):
     SCHEMA_FILE_EXTENSION = "schema"
     OPTION_FILE_EXTENSION = "options"
     JOB_PATH_POSTFIX      = ["schema", ".job"]
+    # TODO: We should move here handlers for over internal storage
+    __preferences         = None
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
 
@@ -304,6 +306,20 @@ class JobTemplate(LocationTemplate):
         self.plg_manager = PluginManager(log_level=log_level)
 
         self.job_options_reader = self.plg_manager.get_plugin_by_name("FileOptionReader")
+        # We have recursion here: we use file option reader plugin to read options,
+        # just to possibly find out that we should use different plugin to 
+        # read options with... e...
+        # FIXME: This is misleading as option reader reads both options and prefs
+        self.__preferences = self.job_options_reader(self, "preferences")
+        self.logger.debug("Reading preferences: %s", self.__preferences)
+
+        # _preferences['plugin'][type] returns us a list of preferenced plugins in order. 
+        # We use first which works (what is hopefully established by manager on init.)
+        prefered_readers =  self.__preferences['plugin']['OptionReader']
+        if "FileOptionReader" not in prefered_readers:
+            self.logger.debug("Choosing other reader from: %s", prefered_readers)
+            self.job_options_reader = self.plg_manager.get_first_maching_plugin(prefered_readers)
+
         self.logger.debug("Choosing option reader: %s", self.job_options_reader)
 
         # We oddly add options attrib to self here.
@@ -396,8 +412,13 @@ class JobTemplate(LocationTemplate):
         # We assume that we always use driver whenever we want to touch storage.
         # But we don't have system to choose this driver, what puts up in pretty
         # much same spot, as touching files by hand (e.i. open())... FIXME.
-        # also, should we conver all os.path functionality!? 
-        device = self.plg_manager.get_plugin_by_name("LocalDeviceShell")
+        # also, should we conver all os.path functionality!?
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
+
 
         # FIXME: This shouldn't be here:
         if not os.path.isdir(prefix_path):
@@ -459,10 +480,12 @@ class JobTemplate(LocationTemplate):
 
             return True
             
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
 
-        # TODO: Device driver should be pluggable
-        device = self.plg_manager.get_plugin_by_name("LocalDeviceShell")
-        # device = LocalDevice(log_level=self.logger.level)
         device.logger.debug("Selecting device driver %s", device)
 
         if not targets:

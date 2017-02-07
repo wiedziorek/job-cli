@@ -4,7 +4,7 @@ from logging import INFO
 import os, stat
 
 # TODO: remove
-USE_SUDO = True
+USE_SUDO = False
 
 class LocalDevicePython(DeviceDriver, PluginManager):
     name = "LocalDevicePython"

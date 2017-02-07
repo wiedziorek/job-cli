@@ -10,8 +10,9 @@ class FileOptionReader(PluginManager):
         self.logger.debug("%s registering as %s", self.name, self.type)
         return True
 
-    def load_options_from_file(self, path, options={}):
-        """
+    def load_from_file(self, path, extension, options={}):
+        """ TODO: Make use of Schematics to very our files
+            follow any known convension...
         """
         from glob import glob
         from os.path import join, split, splitext
@@ -19,7 +20,7 @@ class FileOptionReader(PluginManager):
         files = []
         for postfix in self.job.JOB_PATH_POSTFIX:
             path     = join(path, postfix)
-            location = join(path, "*.%s" % self.job.OPTION_FILE_EXTENSION)
+            location = join(path, "*.%s" % extension)
             files    += glob(location)
 
         self.job.logger.debug("Options found: %s", files)
@@ -31,17 +32,20 @@ class FileOptionReader(PluginManager):
                     options[k] = v
         return options
 
-    def __call__(self, jobtemplate):
+    def __call__(self, jobtemplate, extension=None):
         self.job = jobtemplate
         import job.cli # Just to find job/schema/* location
         from os.path import join, split, realpath, dirname
+
+        if not extension:
+            extension = self.job.OPTION_FILE_EXTENSION
 
         options_paths = [dirname(realpath(job.cli.__file__))]
         options_paths += self.job.get_local_schema_path()
         options = {}
 
         for path in options_paths:
-            opt = self.load_options_from_file(path)
+            opt = self.load_from_file(path, extension=extension)
             for k, v in opt.items():
                 options[k] = v
         return options

@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"OptionReader": ["FileOptionReader"],
+    	"DeviceDriver": ["LocalDeviceShell", "LocalDevicePython"]
+		}
+}
