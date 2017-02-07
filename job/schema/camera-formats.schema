@@ -1,14 +1,11 @@
 {
+    "version"  : "0.1.0",
     "user_dirs": false, 
-     "permission": {"group": true,
+    "permission": {"group": true,
                   "others": false}, 
-    "job_asset": "$USER", 
     "sub_dirs": [],
-    "job_group": "user", 
     "names": ["abc", "json", "chan"], 
     "link_root": null, 
     "is_link": false, 
-    "link_target": null, 
-    "root": "/PROD/dev", 
-    "job_name": "sandbox"
+    "link_target": null
 }

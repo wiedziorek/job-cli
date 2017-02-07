@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Jobb - better job.
+"""Job, vol 2.
 
 Usage:
   job
@@ -16,7 +16,7 @@ Options:
                         No options -> "job set sandbox user $USER"
   -h --help             Show this screen.
   --version             Show version.
-  --log-level=<level>   Log level of subcommands (INFO | DEBUG)
+  --log-level=<level>   Log level of subcommands (INFO | DEBUG) [default: INFO]
   --no-local-schema     Disable savig/loading local copy of schema on 'create' 
   --root=<prefix>       Overrides root directory (only for debuging purposes!) 
 """
@@ -27,14 +27,15 @@ from os.path import realpath, dirname, join, exists
 # Get root directory
 job_root_path = dirname(realpath(__file__))
 job_root_path = dirname(job_root_path)
-docopt_path   = join(job_root_path, "docopt")
+local_docopt_path     = join(job_root_path, "docopt")
+local_schematics_path = join(job_root_path, "schematics")
 sys.path = [job_root_path] + sys.path
-sys.path.append(docopt_path)
+sys.path += [local_docopt_path, local_schematics_path]
 
 
 # Make sure we can import main module
 try:
-    import job.cli
+    import job
     from docopt import docopt
 except ImportError, error:
     print error
@@ -70,16 +71,25 @@ def get_sub_command(options):
     return
     
 def main():
-    from job.utils import setup_logger
-    logger = setup_logger("Job")
-    options = docopt(__doc__, version='job version 0.0.1')
-    command = get_sub_command(options)
+    """ Minimal entry point for job-cli environment. This calls sub command from
+        job-cli/commands directory from where work starts happening.
+    """
+
+    from job.logger import LoggerFactory
+    cli_options = docopt(__doc__, version='job version 2.1.0')
+
+    logger = LoggerFactory().get_logger("Job (main entry)", \
+        level=cli_options['--log-level'])
+
+    command = get_sub_command(cli_options)
     logger.debug("Command found %s", command)
 
     if not command:
+        # This is temporary
+        print __doc__
         return
 
-    command = command(options)
+    command = command(cli_options)
     command.run()
 
 

@@ -1,4 +1,4 @@
-from job.utils import ReadOnlyCacheAttrib, setup_logger
+from job.utils import ReadOnlyCacheAttrib
 
 class PluginType(object):
     class DeviceDriver(type):
@@ -54,12 +54,12 @@ class PluginManager(object):
     type = None
     def __init__(self, *args, **kwargs):
         from job.utils import get_log_level_from_options
-        from logging import INFO
+        from logging import INFO, DEBUG
         self.args   = args
         self.kwargs = kwargs
         self.last_error = None
         self.last_info  = None
-        self.options    = None
+        self.cli_options= None
 
 
         # FIXME!!! Clearly passing options (commandline) is not resolved now.
@@ -71,16 +71,14 @@ class PluginManager(object):
         # 2. Carry cli options docopt from object to object allowing commands and plugins to
         # use it as they like. This is fishy, since in case of changes in cli, all objects, and plugs
         # will have to accomodate to this.
-        self.log_level  = INFO
-        self.logger = setup_logger("Plugin", log_level=self.log_level)
 
-        if 'options' in kwargs:
-            self.options = kwargs['options']
-            self.log_level = get_log_level_from_options(self.options)
-        else:
-            self.logger.debug("PluginManager must be provided with Job option class (dict).")
-             
-        self.logger = setup_logger("Plugin", log_level=self.log_level) # FIXME
+        # FIXME:
+        self.log_level = INFO
+        if 'log_level' in self.kwargs:
+            self.log_level = self.kwargs['log_level']
+
+        from job.logger import LoggerFactory   
+        self.logger = LoggerFactory().get_logger("PluginManager", level="DEBUG") # FIXME
         super(PluginManager, self).__init__()
 
     @property
@@ -97,9 +95,11 @@ class PluginManager(object):
             Params: type -> class(type) present in job.plugin.PluginType.
             Return: List of matchnig plugins 
                     (classes derived from job.plugin.PluginManager) """
+        from job.logger import LoggerFactory
         plg = []
         for plugin in self.plugins:
             if plugin.type == type:
+                plugin.logger = LoggerFactory().get_logger(plugin.name, level=self.log_level)
                 plg += [plugin]
         return plg
 
@@ -108,7 +108,32 @@ class PluginManager(object):
          is returned, which might not be the best policy ever...
 
         Params: string prepresenting plugin class.
-        Return: First matching plugin. """
+        Return: First matching plugin. 
+        """
+        from job.logger import LoggerFactory
         for plugin in self.plugins:
             if plugin.name == name:
+                # FIXME: this is workaround...
+                plugin.logger = LoggerFactory().get_logger(name, level=self.log_level)
                 return plugin
+        self.logger.exception("Can't find specified plugin %s", name)
+        raise OSError
+
+    def get_first_maching_plugin(self, prefered_plugin_names):
+        """ Select first matching plugin from provided list of names.
+
+        Params: List with prefered plugins names.
+        Return: First matching plugin. 
+        """
+        from collections import Iterable
+        from job.logger  import LoggerFactory
+        
+        assert isinstance(prefered_plugin_names, Iterable)
+        installed_plg_names = [plugin.name for plugin in self.plugins]
+        for plugin_name in prefered_plugin_names:
+            if plugin_name in installed_plg_names:
+                plugin_instance = self.get_plugin_by_name(plugin_name)
+                # FIXME: this is workaround...
+                plugin_instance.logger  = LoggerFactory().get_logger(plugin_name, level=self.log_level)
+                return plugin_instance
+        return None

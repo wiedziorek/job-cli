@@ -28,11 +28,11 @@ class JobEnvironment(object):
     cli_options  = None
     job_path = None
     def __init__(self, cli_options, log_level='INFO'):
-        from job.templateEngine import JobTemplate
-        self.cli_options = cli_options
-        self.job_name  = self.cli_options['PROJECT']
-        self.job_group = self.cli_options['TYPE']
-        self.job_asset = self.cli_options['ASSET']
+        from job.template import JobTemplate
+        self.cli_options    = cli_options
+        self.job_current    = self.cli_options['PROJECT']
+        self.job_asset_type = self.cli_options['TYPE']
+        self.job_asset_name = self.cli_options['ASSET']
         self.log_level = log_level
         if self.cli_options['--root']:
             root = self.cli_options['--root']
@@ -41,9 +41,10 @@ class JobEnvironment(object):
 
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
-        kwargs['job_name']  = self.job_name
-        kwargs['job_group'] = self.job_group
-        kwargs['log_level'] = self.log_level
+        kwargs['job_current']    = self.job_current
+        kwargs['job_asset_type'] = self.job_asset_type
+        kwargs['job_asset_name'] = self.job_asset_name
+        kwargs['log_level']      = self.log_level
         if root:
             kwargs['root']  = root
 
@@ -62,6 +63,12 @@ class JobEnvironment(object):
             exports += ['export %s=%s' % (n, v)]
         return exports
 
+    def create_user_dir(self, path, user=None):
+        from getpass import getuser
+        if not user:
+            user = getuser()
+        return os.path.join(path, user)
+
 
 
 class JobRezEnvironment(JobEnvironment):
@@ -71,20 +78,20 @@ class JobRezEnvironment(JobEnvironment):
         self.data    = {}
         from rez import config
         self.rez_config = config.create_config()
-        self.rez_name  = "%s-%s-%s" % (self.job_name, 
-                                       self.job_group, 
-                                       self.job_asset)
+        self.rez_name  = "%s-%s-%s" % (self.job_current, 
+                                       self.job_asset_type, 
+                                       self.job_asset_name)
 
-        self.rez_version = "%s-%s" % (self.job_group, self.job_asset)
+        self.rez_version = "%s-%s" % (self.job_asset_type, self.job_asset_name)
 
-        commands = self.create_exports((('JOB_CURRENT',    self.job_name), 
-                                        ('JOB_ASSET_TYPE', self.job_group),
-                                        ('JOB_ASSET_NAME', self.job_asset),
+        commands = self.create_exports((('JOB_CURRENT',    self.job_current), 
+                                        ('JOB_ASSET_TYPE', self.job_asset_type),
+                                        ('JOB_ASSET_NAME', self.job_asset_name),
                                         ('JOB', self.job_path)))
 
 
-        data = {'version': self.rez_version, 'name': self.job_name, 
-                'uuid'   : 'repository.%s' % self.job_name,
+        data = {'version': self.rez_version, 'name': self.job_current, 
+                'uuid'   : 'repository.%s' % self.job_current,
                 'variants':[],
                 'commands': commands}
 
@@ -122,10 +129,10 @@ class SetJobEnvironment(BaseSubCommand):
         from tempfile import mkdtemp
         from rez.resolved_context import ResolvedContext
         from rez.packages_ import get_latest_package
-        from job.utils import setup_logger, get_log_level_from_options
+        from job.logger import LoggerFactory
 
-        log_level = get_log_level_from_options(self.cli_options)
-        self.logger = setup_logger("Plugin", log_level=log_level)
+        log_level   = self.cli_options['--log-level']
+        self.logger = LoggerFactory().get_logger("Set", level=log_level)
 
         user_job_package_path = os.path.join(os.getenv("HOME"), ".job")
         if not os.path.isdir(user_job_package_path):
@@ -134,6 +141,9 @@ class SetJobEnvironment(BaseSubCommand):
         rez_context_maker = JobRezEnvironment(self.cli_options, log_level=log_level)
         package_paths     = [user_job_package_path] + rez_context_maker.rez_config.packages_path
 
+        # from job.plugin import PluginManager
+        # manager = PluginManager(self.cli_options)
+        # print manager._plugins_store
 
         # Reading options from command line and saved in job.opt(s)
         # How to make it cleaner?
@@ -141,6 +151,7 @@ class SetJobEnvironment(BaseSubCommand):
         # Job option pass:
         if "--rez" in rez_context_maker.job_template.job_options:
             rez_package_names += rez_context_maker.job_template.job_options['--rez']
+
         # Command line pass:
         if self.cli_options['--rez']:
             rez_package_names += self.cli_options['--rez']
@@ -156,11 +167,21 @@ class SetJobEnvironment(BaseSubCommand):
             if not rez_context_maker(path=user_job_package_path):
                 self.logger.exception("Somehting went wrong. can't set. %s", OSError)
                 raise OSError
-        
-        r = ResolvedContext(rez_package_names, package_paths=package_paths)
 
-        if r.success:
-            r.execute_shell()
+        context = ResolvedContext(rez_package_names, package_paths=package_paths)
+
+        # TODO:
+        # Finally we might be able to set, but first lets create user dirs,
+        # This should be generalized into pre-set, post-set registerable actions though
+        # Not even sure it should be here at all.
+        if context.success:
+            locations = rez_context_maker.job_template.render()
+            for loc in locations:
+                if locations[loc]['user_dirs']:
+                    user_dir = rez_context_maker.create_user_dir(loc)
+                    target   = { user_dir: locations[loc] }
+                    rez_context_maker.job_template.create(targets=target)
+            context.execute_shell()
 
         return True
        

@@ -43,6 +43,8 @@ class LocationTemplate(dict):
     SCHEMA_FILE_EXTENSION = "schema"
     OPTION_FILE_EXTENSION = "options"
     JOB_PATH_POSTFIX      = ["schema", ".job"]
+    # TODO: We should move here handlers for over internal storage
+    __preferences         = None
     
     def __init__(self, schema=None, schema_type_name=None, parent=None, **kwargs):
 
@@ -62,10 +64,18 @@ class LocationTemplate(dict):
     def __getitem__(self, key):
         """ LocationTemplates are nested inside each othter. This custom getter
             looks for a key locally, and if not succeed, looks up the parents 
-            recursively.
+            recursively. 
+
+            NOTE: 'None' value is treated as if a key wasn't present,
+            whereas anything else evaluated by Python to 'False' 
+            is interpreted as correct value and returned. 
         """
         if key in self.keys():
-            return super(LocationTemplate, self).__getitem__(key)
+            value = super(LocationTemplate, self).__getitem__(key)
+            # See note above:
+            if value == None and self.parent_template:
+               return self.parent_template[key]
+            return value
         else:
             # We are at a root level, and still no value... 
             if self.parent_template == None:
@@ -227,21 +237,32 @@ class LocationTemplate(dict):
 
 
 
-    def load_schemas(self, path, schema={}):
-        """Load json  schemas (*.schema) files defining LocationTemplates. 
+    def load_schemas(self, path, schema_shop={}):
+        """ Load json schemas (*.schema) files defining LocationTemplate. 
         """
         from glob import glob
-        location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
-        files    = glob(location)
-        self.logger.debug("Schemas found: %s", files)
+        import schema
+        schema_location = os.path.join(path, "*.%s" % self.SCHEMA_FILE_EXTENSION)
+        schema_files    = glob(schema_location)
+        self.logger.debug("Schema files found: %s", schema_files)
 
-        for file in files:
+        for file in schema_files:
             with open(file) as file_object:
-                obj  = json.load(file_object)
+                candidate      = json.load(file_object)
+
+                if not "version" in candidate:
+                    raise KeyError(file)
+
+                schema_version = candidate['version']
+                schema_object  = schema.Factory(log_level=self.logger.level).find(candidate, schema_version)
+
+                if not schema_object:
+                    self.logger.warning("Can't find parser for current schema: %s, %s", file, schema_version)
+                
                 name = os.path.split(file)[1]
                 name = os.path.splitext(name)[0]
-                schema[name] = obj
-        return schema
+                schema_shop[name] = schema_object# candidate #change make
+        return schema_shop
 
 
 
@@ -264,10 +285,10 @@ class JobTemplate(LocationTemplate):
             job.render() (children created recursively)
         """
         from os.path import join, split, realpath, dirname
-        from utils import setup_logger
+        from logger import LoggerFactory
 
         name = self.__class__.__name__
-        self.logger = setup_logger(name, log_level=log_level)
+        self.logger = LoggerFactory().get_logger(name, level=log_level)
 
         schema_locations  = [dirname(realpath(__file__))]
 
@@ -282,9 +303,23 @@ class JobTemplate(LocationTemplate):
         # We make it pluggable since prefs/options might be
         # imported from database 
         from plugin import PluginManager 
-        self.plg_manager = PluginManager()
+        self.plg_manager = PluginManager(log_level=log_level)
 
         self.job_options_reader = self.plg_manager.get_plugin_by_name("FileOptionReader")
+        # We have recursion here: we use file option reader plugin to read options,
+        # just to possibly find out that we should use different plugin to 
+        # read options with... e...
+        # FIXME: This is misleading as option reader reads both options and prefs
+        self.__preferences = self.job_options_reader(self, "preferences")
+        self.logger.debug("Reading preferences: %s", self.__preferences)
+
+        # _preferences['plugin'][type] returns us a list of preferenced plugins in order. 
+        # We use first which works (what is hopefully established by manager on init.)
+        prefered_readers =  self.__preferences['plugin']['OptionReader']
+        if "FileOptionReader" not in prefered_readers:
+            self.logger.debug("Choosing other reader from: %s", prefered_readers)
+            self.job_options_reader = self.plg_manager.get_first_maching_plugin(prefered_readers)
+
         self.logger.debug("Choosing option reader: %s", self.job_options_reader)
 
         # We oddly add options attrib to self here.
@@ -374,11 +409,22 @@ class JobTemplate(LocationTemplate):
         prefix_path = os.path.join(prefix_path, postfix)
         prefix_path = os.path.expandvars(prefix_path)
 
+        # We assume that we always use driver whenever we want to touch storage.
+        # But we don't have system to choose this driver, what puts up in pretty
+        # much same spot, as touching files by hand (e.i. open())... FIXME.
+        # also, should we conver all os.path functionality!?
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
+
+
         # FIXME: This shouldn't be here:
         if not os.path.isdir(prefix_path):
             self.logger.warning("Schema location doesn't exists! %s", prefix_path)
             try:
-                os.mkdir(prefix_path)
+                device.make_dir(prefix_path)
                 self.logger.info("Making local schema location %s", prefix_path)
             except:
                 self.logger.exception("Can't make %s", prefix_path)
@@ -398,7 +444,7 @@ class JobTemplate(LocationTemplate):
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
 
-    def create(self):
+    def create(self, targets=None):
         """ TODO: This is only fo testing purposes.
         """
         def create_link(path, targets):
@@ -427,19 +473,28 @@ class JobTemplate(LocationTemplate):
                 device.make_link(path, link_path)
 
             elif targets[path]['link_target']:
-                if self['job_name'] == self['job_asset']:
+                if self['job_current'] == self['job_asset_name']:
                     return False 
                 link_path = self.expand_path_template(targets[path]['link_target'])
                 device.make_link(path, link_path)
 
             return True
             
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
 
-        # TODO: Device driver should be pluggable
-        device = self.plg_manager.get_plugin_by_name("LocalDevicePython")
-        # device = LocalDevice(log_level=self.logger.level)
         device.logger.debug("Selecting device driver %s", device)
-        targets = self.render()
+
+        if not targets:
+            targets = self.render()
+
+        # Should we check what's commig here?
+        for key in targets:
+            assert(isinstance(targets[key], LocationTemplate) \
+                or issubclass(targets[key], LocationTemplate))
 
         for path in targets:
             device.make_dir(path)
