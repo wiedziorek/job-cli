@@ -99,8 +99,15 @@ class LocationTemplate(dict):
             # This will raise an exception if 
             # no path_template has been found here or up.
             template = self['path_template']
+            
+        # FIXME: This is temporary until we move on to better path templates!
+        if type(template) in (list, tuple):
+            consists = template
+        elif isinstance(template, str):
+            consists = template.split("/")
+        else:
+            raise EnvironmentError
 
-        consists = template.split("/")
         expanded_directores = []
 
         for element in consists:
