@@ -8,6 +8,7 @@ class ReadShotgun(BaseSubCommand):
         """ Entry point for sub command.
         """
         from job.plugin import PluginManager
+        import plugins
         # FIXME: This install plugins, not very intuitive. Maybe put in job
         # import plugins
         

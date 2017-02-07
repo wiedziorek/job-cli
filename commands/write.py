@@ -8,6 +8,7 @@ class WriteShotgun(BaseSubCommand):
         """ Entry point for sub command.
         """
         from job.plugin import PluginManager
+        import plugins
         manager = PluginManager(options=self.cli_options)
         self.shotgun_writer = manager.get_plugin_by_name("ShotgunWriter")
         if self.shotgun_writer:
