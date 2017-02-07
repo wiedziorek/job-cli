@@ -35,7 +35,7 @@ sys.path += [local_docopt_path, local_schematics_path]
 
 # Make sure we can import main module
 try:
-    import job.cli
+    import job
     from docopt import docopt
 except ImportError, error:
     print error

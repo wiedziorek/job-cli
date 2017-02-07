@@ -5,6 +5,6 @@
 # Plugin manager prevends from loading plugins which don't like
 # to be initialzed, so theroretically plugin refusing to initialize
 # won't break anyting.
-import plugins
+# import plugins
 import schematics
 import schema
