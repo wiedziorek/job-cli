@@ -19,6 +19,8 @@ class PluginType(object):
         pass
     class PostRenderTempalateAction(type):
         pass
+    class Environment(type):
+        pass
 
 
 class DeviceDriver():
@@ -46,6 +48,20 @@ class DeviceDriver():
     def set_ownership(self, path, user=None, group=None):
         raise NotImplementedError('You must implement the run() method yourself!')
 
+
+class Environment():
+    """ Abstract class defining an interface to define job environment.
+        Current implentation uses rez to create on-the-fly package per set command
+        and saves it in user/.job folder for later reuse. In other words setting on
+        shot or asset means creating or openingn previosly created rez pachage. 
+        This was we can model environment with whole rez infrastructure. We might end up
+        in something else. Thus pluggable version or environment resolving.
+    """
+    def find(self, **kwargs):
+        raise NotImplementedError('You must implement the run() method yourself!')
+   
+    def execute(self, **kwargs):
+        raise NotImplementedError('You must implement the run() method yourself!')
 
 
 class PluginRegister(type):
@@ -145,7 +161,7 @@ class PluginManager(object):
                 return plugin
         self.logger.exception("Can't find specified plugin %s", name)
         raise OSError
-        
+
     # @CanchedMethod
     def get_first_maching_plugin(self, prefered_plugin_names):
         """ Select first matching plugin from provided list of names.
@@ -162,6 +178,7 @@ class PluginManager(object):
             if plugin_name in installed_plg_names:
                 plugin_instance = self.get_plugin_by_name(plugin_name)
                 # FIXME: this is workaround...
-                plugin_instance.logger  = LoggerFactory().get_logger(plugin_name, level=self.log_level)
+                plugin_instance.logger  = LoggerFactory().get_logger(plugin_name,\
+                    level=self.log_level)
                 return plugin_instance
         return None

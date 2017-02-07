@@ -1,189 +1,183 @@
+##########################################################################
+#
+#  Copyright (c) 2017, Human Ark Animation Studio. All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are
+#  met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#
+#     * Neither the name of Human Ark Animation Studio nor the names of any
+#       other contributors to this software may be used to endorse or
+#       promote products derived from this software without specific prior
+#       written permission.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+#  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+#  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+#  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+#  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+#  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+#  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+#  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+##########################################################################
 from .base import BaseSubCommand
-
-import sys, os
-from glob import glob
-
-# TODO: Find Rez and add its module to a path (elegantly)
-if not os.getenv("REZ_CONFIG_FILE", None):
-    try:
-        import rez
-    except ImportError, e:
-        print "Can't find rez.", e
-        raise ImportError
-else:
-    rez_path = os.environ['REZ_CONFIG_FILE']
-    rez_path = os.path.dirname(rez_path)
-    rez_candidate = os.path.join(rez_path, "lib64/python2.7/site-packages/rez-*.egg")
-    rez_candidate = glob(rez_candidate)
-    if rez_candidate:
-        sys.path.append(rez_candidate[0])
-    else:
-        print "Can't find rez."
-        raise ImportError
-
-
 
 
 class JobEnvironment(object):
-    cli_options  = None
-    job_path = None
+    """ Renders job environment gathering bits of information from
+        JobTemplate created on-the-fly, previuosly saved session,
+        or user settings. At the end, we should call execute() to
+        teleport ourself into prepered environment.
+
+    """
+    cli_options = None
+    job_path    = None
     def __init__(self, cli_options, log_level='INFO'):
-        from job.template import JobTemplate
+        """ Copy all settings from cli and what's not.
+        """
+        from os.path import join
+        from os import getenv
         self.cli_options    = cli_options
         self.job_current    = self.cli_options['PROJECT']
         self.job_asset_type = self.cli_options['TYPE']
         self.job_asset_name = self.cli_options['ASSET']
-        self.log_level = log_level
-        if self.cli_options['--root']:
-            root = self.cli_options['--root']
-        else:
-            root = None
+        self.log_level      = log_level
 
+        if self.cli_options['--root']:
+            self.root = self.cli_options['--root']
+        else:
+            self.root = None
+
+        self.job_template = self.__create_job_template()
+        self.job_path     = self.job_template.expand_path_template()
+        self.user_path    = join(getenv("HOME"), ".job")
+
+        from job.plugin import PluginManager 
+        self.plg_manager = PluginManager(log_level=log_level)
+        self.env_maker   = self.plg_manager.get_plugin_by_name("RezEnvironment") 
+
+
+    def find_job_context(self, job_template=None):
+        """ Using underlying context creator find if current
+            job was previously created (by set command). 
+
+            Parms  : 
+                job_template: job_template once again happends to be definite guide to
+                project details. This is the only way arbitrarty plugins can handle
+                changing naming convension suppored by Job v2.
+    
+            Returns:  manifestation of the job context 
+                      (rez package for example) or None.
+        """
+
+        return self.env_maker.find(job_template, self.user_path)
+
+
+    def __create_job_template(self):
+        """ Creates job template instance to trace vital
+            information from it (location, naming convension).
+
+            Returns: JobTemplate class instance.
+        """
+        from job.template import JobTemplate
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
         kwargs['job_current']    = self.job_current
         kwargs['job_asset_type'] = self.job_asset_type
         kwargs['job_asset_name'] = self.job_asset_name
         kwargs['log_level']      = self.log_level
-        if root:
-            kwargs['root']  = root
+        if self.root:
+            kwargs['root']  = self.root
 
-        self.job_template = JobTemplate(**kwargs)
+        job_template = JobTemplate(**kwargs)
         if not self.cli_options['--no-local-schema']:
-            local_schema_path = self.job_template.get_local_schema_path()
-            self.job_template.load_schemas(local_schema_path)
-            super(JobTemplate, self.job_template).__init__(self.job_template.schema, "job", **kwargs)
+            local_schema_path = job_template.get_local_schema_path()
+            job_template.load_schemas(local_schema_path)
+            super(JobTemplate, job_template).__init__(job_template.schema, "job", **kwargs)
 
-        job_path = self.job_template.expand_path_template()
-        self.job_path = job_path
-
-    def create_exports(self, name_values):
-        exports = []
-        for n, v in name_values:
-            exports += ['export %s=%s' % (n, v)]
-        return exports
-
-    def create_user_dir(self, path, user=None):
-        from getpass import getuser
-        if not user:
-            user = getuser()
-        return os.path.join(path, user)
+        return job_template
 
 
 
-class JobRezEnvironment(JobEnvironment):
-    def __init__(self, cli_options, log_level='INFO'):
-        super(JobRezEnvironment, self).__init__(cli_options, log_level=log_level)
-        self.cli_options = cli_options
-        self.data    = {}
-        from rez import config
-        self.rez_config = config.create_config()
-        self.rez_name  = "%s-%s-%s" % (self.job_current, 
-                                       self.job_asset_type, 
-                                       self.job_asset_name)
-
-        self.rez_version = "%s-%s" % (self.job_asset_type, self.job_asset_name)
-
-        commands = self.create_exports((('JOB_CURRENT',    self.job_current), 
-                                        ('JOB_ASSET_TYPE', self.job_asset_type),
-                                        ('JOB_ASSET_NAME', self.job_asset_name),
-                                        ('JOB', self.job_path)))
 
 
-        data = {'version': self.rez_version, 'name': self.job_current, 
-                'uuid'   : 'repository.%s' % self.job_current,
-                'variants':[],
-                'commands': commands}
-
-        self.data = data
-
-    def __call__(self, path):
-        """
-        """
-        if self.create_rez_package(self.data):
-            self.install_rez_package(path)
-            return True
-        return False
-
-    def create_rez_package(self, data):
-        """
-        """
-        from rez.packages_ import create_package
-        self.package = create_package(data['name'], data)
-        return self.package
-
-    def install_rez_package(self, path):
-        """
-        """
-        variant = self.package.get_variant()
-        variant.install(path)
-
-
-class SetJobEnvironment(BaseSubCommand):
-    """ Sub command which performs setup of the environment per job.
+class SetEnvironment(BaseSubCommand):
+    """ Performs setting up of the environment per job.
     """
  
     def run(self):
         """ Entry point for sub command.
         """
-        from tempfile import mkdtemp
-        from rez.resolved_context import ResolvedContext
-        from rez.packages_ import get_latest_package
+        # from rez.resolved_context import ResolvedContext
+        # from rez.packages_ import get_latest_package
+        from os.path import join, isdir
+        from os import mkdir, getenv
         from job.logger import LoggerFactory
 
         log_level   = self.cli_options['--log-level']
-        self.logger = LoggerFactory().get_logger("Set", level=log_level)
+        self.logger = LoggerFactory().get_logger("SetEnvironment", level=log_level)
 
-        user_job_package_path = os.path.join(os.getenv("HOME"), ".job")
-        if not os.path.isdir(user_job_package_path):
-            os.mkdir(user_job_package_path)
+        user_job_package_path = join(getenv("HOME"), ".job")
+        if not isdir(user_job_package_path):
+            mkdir(user_job_package_path)
 
-        rez_context_maker = JobRezEnvironment(self.cli_options, log_level=log_level)
-        package_paths     = [user_job_package_path] + rez_context_maker.rez_config.packages_path
+        job = JobEnvironment(self.cli_options, log_level=log_level)
+        job.env_maker(job.job_template)
+        print job.env_maker.rez_pkg_name
+        # print job.job_template['root']
 
-        # from job.plugin import PluginManager
-        # manager = PluginManager(self.cli_options)
-        # print manager._plugins_store
+
+        # package_paths     = [user_job_package_path] + job.rez_config.packages_path
 
         # Reading options from command line and saved in job.opt(s)
         # How to make it cleaner?
-        rez_package_names = []
-        # Job option pass:
-        if "--rez" in rez_context_maker.job_template.job_options:
-            rez_package_names += rez_context_maker.job_template.job_options['--rez']
+        # rez_package_names = []
+        # # Job option pass:
+        # if "--rez" in job.job_template.job_options:
+        #     rez_package_names += job.job_template.job_options['--rez']
 
-        # Command line pass:
-        if self.cli_options['--rez']:
-            rez_package_names += self.cli_options['--rez']
-        rez_package_names += [rez_context_maker.rez_name]
+        # # Command line pass:
+        # if self.cli_options['--rez']:
+        #     rez_package_names += self.cli_options['--rez']
+        # rez_package_names += [job.rez_name]
 
         # Lets try if packages was already created:
-        if not get_latest_package(rez_context_maker.data['name'], \
-            range_=rez_context_maker.data['version'], \
-            paths=[user_job_package_path]):
+        # if not get_latest_package(job.data['name'], \
+        #     range_=job.data['version'], \
+        #     paths=[user_job_package_path]):
 
-            self.logger.warning("Not package %s found... creating it.", rez_context_maker.rez_name)
+        #     self.logger.warning("Not package %s found... creating it.", job.rez_name)
 
-            if not rez_context_maker(path=user_job_package_path):
-                self.logger.exception("Somehting went wrong. can't set. %s", OSError)
-                raise OSError
+        #     if not job(path=user_job_package_path):
+        #         self.logger.exception("Somehting went wrong. can't set. %s", OSError)
+        #         raise OSError
 
-        context = ResolvedContext(rez_package_names, package_paths=package_paths)
+        # context = ResolvedContext(rez_package_names, package_paths=package_paths)
 
-        # TODO:
-        # Finally we might be able to set, but first lets create user dirs,
-        # This should be generalized into pre-set, post-set registerable actions though
-        # Not even sure it should be here at all.
-        if context.success:
-            locations = rez_context_maker.job_template.render()
-            for loc in locations:
-                if locations[loc]['user_dirs']:
-                    user_dir = rez_context_maker.create_user_dir(loc)
-                    target   = { user_dir: locations[loc] }
-                    rez_context_maker.job_template.create(targets=target)
-            context.execute_shell()
+        # # Finally we might be able to set, but first lets create user dirs,
+        # # This should be generalized into pre-set, post-set registerable actions though
+        # # Not even sure it should be here at all.
+        # if context.success:
+        #     locations = job.job_template.render()
+        #     for loc in locations:
+        #         if locations[loc]['user_dirs']:
+        #             user_dir = job.get_user_subdir(loc)
+        #             target   = { user_dir: locations[loc] }
+        #             job.job_template.create(targets=target)
+        #     context.execute_shell()
 
-        return True
+        # return True
        
 
 
