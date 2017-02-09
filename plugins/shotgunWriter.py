@@ -8,6 +8,8 @@ class ShotgunWriter(ShotgunPlugin, PluginManager):
 
     def create_sg_asset(self, ha_project, ha_type, ha_asset):
         sg_project = self.get_sg_project(ha_project)
+        if not sg_project:
+            sg_project = self.create_sg_project(ha_project)
         sg_asset_type = self.get_sg_asset_type(ha_type)
         # Prevent Shotgun creating a second asset with identical name
         # in the given asset group.
@@ -22,6 +24,8 @@ class ShotgunWriter(ShotgunPlugin, PluginManager):
 
     def create_sg_shot(self, ha_project, ha_type, ha_asset):
         sg_project = self.get_sg_project(ha_project)
+        if not sg_project:
+            sg_project = self.create_sg_project(ha_project)
         sg_sequence = self.get_sg_sequence(sg_project, ha_type)
         if not sg_sequence:
             sg_sequence = self.create_sg_sequence(sg_project, ha_type)
@@ -35,6 +39,12 @@ class ShotgunWriter(ShotgunPlugin, PluginManager):
             "code": ha_asset
         }
         return self.sg.create("Shot", data)
+
+    def create_sg_type(self, ha_project, ha_type):
+        sg_project = self.get_sg_project(ha_project)
+        if not sg_project:
+            sg_project = self.create_sg_project(ha_project)
+        return self.create_sg_sequence(sg_project, ha_type)
 
     def create_sg_sequence(self, sg_project, code):
         data = {
@@ -51,7 +61,7 @@ class ShotgunWriter(ShotgunPlugin, PluginManager):
         return self.sg.create("Project", data)
 
     def __call__(self, options):
-        if options["TYPE"]:
+        if options["ASSET"]:
             if self.get_sg_type(options["TYPE"]) == "Asset":
                 return self.create_sg_asset(options["PROJECT"],
                                             options["TYPE"],
@@ -60,5 +70,12 @@ class ShotgunWriter(ShotgunPlugin, PluginManager):
                 return self.create_sg_shot(options["PROJECT"],
                                            options["TYPE"],
                                            options["ASSET"])
+        elif options["TYPE"]:
+            if options["TYPE"] in ["char", "prop", "set"]:
+                raise ValueError('Cannot create a sequence with a restricted ' \
+                                 'name ("char", "prop" or "set").')
+            else:
+                return self.create_sg_type(options["PROJECT"],
+                                              options["TYPE"])
         elif options["PROJECT"]:
             return self.create_sg_project(options["PROJECT"])

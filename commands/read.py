@@ -9,9 +9,6 @@ class ReadShotgun(BaseSubCommand):
         """
         from job.plugin import PluginManager
         import plugins
-        # FIXME: This install plugins, not very intuitive. Maybe put in job
-        # import plugins
-        
         manager = PluginManager(self.cli_options)
         self.shotgun_reader = manager.get_plugin_by_name("ShotgunReader")
         if self.shotgun_reader:
