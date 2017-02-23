@@ -200,7 +200,7 @@ class PluginManager(object):
                 # FIXME: this is workaround...
                 plugin.logger = LoggerFactory().get_logger(name, level=self.log_level)
                 return plugin
-        self.logger.exception("Can't find specified plugin %s", name)
+        self.logger.exception("Can't find plugin %s", name)
         raise OSError
 
     # @CachedMethod
