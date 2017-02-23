@@ -165,7 +165,7 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
         from subprocess import Popen, PIPE
         command = []
         if os.path.exists(path):
-            self.logger.warning("Path exists, can't proceed %s", path)
+            self.logger.warning("Path exists %s", path)
             return False
         try:
             if sudo:

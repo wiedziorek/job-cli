@@ -160,7 +160,7 @@ class PluginManager(object):
             self.log_level = self.kwargs['log_level']
 
         from job.logger import LoggerFactory   
-        self.logger = LoggerFactory().get_logger("PluginManager", level="DEBUG") # FIXME
+        self.logger = LoggerFactory().get_logger("PluginManager", level="INFO") # FIXME
         super(PluginManager, self).__init__()
 
     @property
