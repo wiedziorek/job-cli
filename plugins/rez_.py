@@ -143,7 +143,7 @@ class RezEnvironment(PluginManager):
         self.packages_path  = [self.local_pkg_path] + self.rez_config.packages_path
      
 
-    def create_context(self, path=None, install=True):
+    def create_context(self, requires=[], custom={}, install=True):
         """ Creates ad-hoc Rez package that will serve as job context resolver.
             Packages will be saved in ~/.job directory and used in execute_context().
 
@@ -173,11 +173,11 @@ class RezEnvironment(PluginManager):
         )
 
         self.__data = {'version': self.rez_pkg_version, 'name': self.rez_pkg, 
-                'uuid'   : 'repository.%s' % self.rez_pkg, 'variants':[], 'commands': commands}
+                'uuid'   : 'repository.%s' % self.rez_pkg, 'variants':[], 'commands': commands,
+                'requires': requires, 'custom': custom}
 
-        if not path:
-           path = self.local_pkg_path
-    
+        
+        path    = self.local_pkg_path
         package = self.__create_rez_package(self.__data)
 
         if not package:
@@ -284,6 +284,7 @@ class RezEnvironment(PluginManager):
         """
         variant = package.get_variant()
         variant.install(path)
+
 
     def context_name(self, job_template=None):
         """
