@@ -14,6 +14,15 @@ class FileOptionReader(PluginManager):
         """ TODO: Make use of Schematics to very our files
             follow any known convension...
         """
+        def _from_json(json_object):
+            tmp = {}                                 
+            if isinstance(json_object, dict):
+                for k in json_object:
+                    tmp[k] = _from_json(json_object[k])
+            if isinstance(json_object, list):
+                return tuple(json_object)
+            return tmp
+
         from glob import glob
         from os.path import join, split, splitext
         import json
@@ -29,6 +38,9 @@ class FileOptionReader(PluginManager):
             with open(file) as file_object:
                 obj  = json.load(file_object)
                 for k, v in obj.items():
+                    # This is for caching and safeness
+                    if isinstance(v, list):
+                        v = tuple(v)
                     options[k] = v
         return options
 

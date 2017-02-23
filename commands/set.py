@@ -31,7 +31,12 @@
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 ##########################################################################
+
 from .base import BaseSubCommand
+
+
+class NoJobEnvironmentBackend(Exception):
+    """ Raised when JobEnvironment can't find requested backend plugin."""
 
 
 class JobEnvironment(object):
@@ -44,15 +49,21 @@ class JobEnvironment(object):
     cli_options = None
     job_path    = None
     def __init__(self, cli_options, log_level='INFO'):
-        """ Copy all settings from cli and what's not.
+        """ Copy all settings from cli and creates job template class from
+            a description. Also initialize environment plugin, saves it as 
+            a backend object to be used for something usefull.
         """
-        from os.path import join
-        from os import getenv
+        from os.path import join, expanduser, isdir
+        from os import mkdir
+        from job.plugin import PluginManager
+        from job.logger import LoggerFactory 
+
         self.cli_options    = cli_options
         self.job_current    = self.cli_options['PROJECT']
         self.job_asset_type = self.cli_options['TYPE']
         self.job_asset_name = self.cli_options['ASSET']
         self.log_level      = log_level
+        self.logger         = LoggerFactory().get_logger("JobEnvironment", level=log_level)
 
         if self.cli_options['--root']:
             self.root = self.cli_options['--root']
@@ -61,11 +72,27 @@ class JobEnvironment(object):
 
         self.job_template = self.__create_job_template()
         self.job_path     = self.job_template.expand_path_template()
-        self.user_path    = join(getenv("HOME"), ".job")
+        self.package_path = join(expanduser("~"), ".job")
 
-        from job.plugin import PluginManager 
+        if not isdir(self.package_path):
+            self.logger.debug("No ~/.job directory. Creating it.")
+            mkdir(self.package_path)
+
         self.plg_manager = PluginManager(log_level=log_level)
-        self.env_maker   = self.plg_manager.get_plugin_by_name("RezEnvironment") 
+
+        # TODO: Make it configurable
+        environ_plugin_name = "RezEnvironment"
+        self.backend = self.plg_manager.get_plugin_by_name(environ_plugin_name) 
+
+        # This is in case, we will be asking for plugin type rather then by name,
+        # so plugin manager might not catch missing one.
+        if not self.backend:
+            message = "Can't operate without environment backend %s"
+            self.logger.exception(message, environ_plugin_name)
+            raise NoJobEnvironmentBackend(message % environ_plugin_name)
+
+        # Bind job_template to the context:
+        self.backend(self.job_template)
 
 
     def find_job_context(self, job_template=None):
@@ -81,7 +108,12 @@ class JobEnvironment(object):
                       (rez package for example) or None.
         """
 
-        return self.env_maker.find(job_template, self.user_path)
+        if job_template:
+            _template = job_template
+        else:
+            _template = self.job_template
+
+        return self.backend.find_context(_template, path=self.package_path)
 
 
     def __create_job_template(self):
@@ -91,6 +123,7 @@ class JobEnvironment(object):
             Returns: JobTemplate class instance.
         """
         from job.template import JobTemplate
+
         # Pack arguments so we can ommit None one (like root):
         kwargs = {}
         kwargs['job_current']    = self.job_current
@@ -108,8 +141,26 @@ class JobEnvironment(object):
 
         return job_template
 
+    def create_user_dirs(self, user=None):
+        """ Verb using job template to create user subdir.
+            TODO: This should be moved to JobTemplate class.
+        """
+        from getpass import getuser
+        from os.path import join
 
+        if not user:
+            user = getuser()
 
+        template = self.job_template.render()
+
+        for path in template:
+            if template[path]['user_dirs']:
+                user_dir = join(path, user)
+                target   = { user_dir: template[path] }
+                ok = self.job_template.create(targets=target)
+                if not ok:
+                    return
+        return ok
 
 
 class SetEnvironment(BaseSubCommand):
@@ -119,65 +170,41 @@ class SetEnvironment(BaseSubCommand):
     def run(self):
         """ Entry point for sub command.
         """
-        # from rez.resolved_context import ResolvedContext
-        # from rez.packages_ import get_latest_package
-        from os.path import join, isdir
-        from os import mkdir, getenv
+        from os.path import join, isdir, expanduser
         from job.logger import LoggerFactory
 
         log_level   = self.cli_options['--log-level']
         self.logger = LoggerFactory().get_logger("SetEnvironment", level=log_level)
 
-        user_job_package_path = join(getenv("HOME"), ".job")
-        if not isdir(user_job_package_path):
-            mkdir(user_job_package_path)
-
         job = JobEnvironment(self.cli_options, log_level=log_level)
-        job.env_maker(job.job_template)
-        print job.env_maker.rez_pkg_name
-        # print job.job_template['root']
+        ok  = job.find_job_context()
+
+        if not ok:
+            context_name, package_name, package_version = job.backend.context_name()
+            self.logger.warning("Not package %s found... creating it.", package_name)
+            ok = job.backend.create_context()
+
+        # Read additional packages from command line:
+        rez_package_names = []
+        if self.cli_options['--rez']:
+            rez_package_names += self.cli_options['--rez']
+
+        # Some might be also added in job.options:
+        if "--rez" in job.job_template.job_options:
+            rez_package_names += job.job_template.job_options['--rez']
+
+        if ok:
+            try:
+                job.create_user_dirs()
+                job.backend.execute_context(rez_package_names)
+            except Exception, e:
+                self.logger.exception("Can't set to the job context, ", e)
+                raise Exception
+
+        else:
+            self.logger.info("Can't set to job. Exiting.")
 
 
-        # package_paths     = [user_job_package_path] + job.rez_config.packages_path
-
-        # Reading options from command line and saved in job.opt(s)
-        # How to make it cleaner?
-        # rez_package_names = []
-        # # Job option pass:
-        # if "--rez" in job.job_template.job_options:
-        #     rez_package_names += job.job_template.job_options['--rez']
-
-        # # Command line pass:
-        # if self.cli_options['--rez']:
-        #     rez_package_names += self.cli_options['--rez']
-        # rez_package_names += [job.rez_name]
-
-        # Lets try if packages was already created:
-        # if not get_latest_package(job.data['name'], \
-        #     range_=job.data['version'], \
-        #     paths=[user_job_package_path]):
-
-        #     self.logger.warning("Not package %s found... creating it.", job.rez_name)
-
-        #     if not job(path=user_job_package_path):
-        #         self.logger.exception("Somehting went wrong. can't set. %s", OSError)
-        #         raise OSError
-
-        # context = ResolvedContext(rez_package_names, package_paths=package_paths)
-
-        # # Finally we might be able to set, but first lets create user dirs,
-        # # This should be generalized into pre-set, post-set registerable actions though
-        # # Not even sure it should be here at all.
-        # if context.success:
-        #     locations = job.job_template.render()
-        #     for loc in locations:
-        #         if locations[loc]['user_dirs']:
-        #             user_dir = job.get_user_subdir(loc)
-        #             target   = { user_dir: locations[loc] }
-        #             job.job_template.create(targets=target)
-        #     context.execute_shell()
-
-        # return True
        
 
 

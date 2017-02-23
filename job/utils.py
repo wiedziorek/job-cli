@@ -43,15 +43,16 @@ class CachedMethod(object):
       self.cache = {}
 
    def __call__(self, *args):
-      if not isinstance(args, collections.Hashable):
+      _args = tuple(args)
+      if not isinstance(_args, collections.Hashable):
          # uncacheable. a list, for instance.
          # better to not cache than blow up.
-         return self.func(*args)
-      if args in self.cache:
-         return self.cache[args]
+         return self.func(*_args)
+      if _args in self.cache:
+         return self.cache[_args]
       else:
-         value = self.func(*args)
-         self.cache[args] = value
+         value = self.func(*_args)
+         self.cache[_args] = value
          return value
 
    def __repr__(self):
