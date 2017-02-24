@@ -1,7 +1,8 @@
 {
 	"plugin": {
-		"OptionReader": ["FileOptionReader"],
-    	"DeviceDriver": ["LocalDeviceShell", "LocalDevicePython"],
-    	"Environment" : ["RezEnvironment"]
+		"OptionReader":   ["FileOptionReader"],
+    	"DeviceDriver":   ["LocalDeviceShell", "LocalDevicePython"],
+    	"Environment" :   ["RezEnvironment"],
+    	"DatabaseDriver": ["ShotgunReader"]
 		}
 }

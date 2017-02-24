@@ -36,7 +36,7 @@
 
 Usage:
   job
-  job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema]
+  job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema --fromdb]
   job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log-level=INFO --root=prefix] [--refresh]
   job archive PROJECT 
   job read  PROJECT [TYPE ASSET] [FIELDS...] [--log-level=INFO]

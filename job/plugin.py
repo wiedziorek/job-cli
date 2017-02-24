@@ -105,6 +105,18 @@ class Environment():
         raise NotImplementedError('You must implement this method yourself!')
 
 
+class DatabaseDriver():
+    """ Abstrat class definig an interface for reading project data
+        from external database.
+    """
+    type = PluginType.OptionReader
+    def read_project(self, **kwargs):
+        raise NotImplementedError('You must implement this method yourself!')
+
+    def read_asset(self, **kwargs):
+        raise NotImplementedError('You must implement this method yourself!')
+
+
 class PluginRegister(type):
     """
     A plugin mount point derived from:
