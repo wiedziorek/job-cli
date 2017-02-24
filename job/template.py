@@ -336,14 +336,18 @@ class JobTemplate(LocationTemplate):
         if not self.job_options:
             self.logger.debug("Can't get options for a job! %s", self.job_options_reader.error)
 
-    def get_local_schema_path(self):
+    def get_local_schema_path(self, template=''):
         """ Once we know where to look for we may want to refer to
             local schema copy if the job/group/asset, as they might
             by edited independly from defualt schemas or any other
             present in environ varible JOB_TEMPLATE_PATH.
 
             Parms : job - object to retrieve local_schema_path templates.
-            Return: list of additional schema locations. """
+            Return: list of additional schema locations. 
+        """
+        if template and template in self['local_schema_path'].keys():
+            return self.expand_path_template(self['local_schema_path'][template])
+
         # This is ugly, should we move it to Job()?
         job_schema   = self['local_schema_path']['job']
         group_schema = self['local_schema_path']['group']
