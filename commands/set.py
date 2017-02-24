@@ -163,8 +163,8 @@ class JobEnvironment(object):
 
         job_template = JobTemplate(**kwargs)
         if not self.cli_options['--no-local-schema']:
-            local_schema_path = job_template.get_local_schema_path()
-            job_template.load_schemas(local_schema_path)
+            local_schema_paths = job_template.get_local_schema_path()
+            job_template.load_schemas(local_schema_paths)
             super(JobTemplate, job_template).__init__(job_template.schema, "job", **kwargs)
 
         return job_template
@@ -237,6 +237,7 @@ class SetEnvironment(BaseSubCommand):
         """ Entry point for sub command.
         """
         from os.path import join, isdir, expanduser
+        from getpass import getuser
         from job.logger import LoggerFactory
 
         log_level   = self.cli_options['--log-level']
@@ -248,19 +249,31 @@ class SetEnvironment(BaseSubCommand):
 
             # Can't deal with both missing args and refreshing...
             if self.cli_options['--refresh']:
-                self.logger.exception("Can't set with Refresh and missing arguments, ")
-                raise SetCommandNotSuccessful("Either remove --refresh flag or specify project type asset. ")
+                self.logger.exception("Can't set with --refresh AND missing arguments. ")
+                raise SetCommandNotSuccessful("Either remove --refresh flag or specify PROJECT TYPE ASSET.")
 
             cli_options = job.get_history_from_file(self.cli_options)
 
             if cli_options:
                 self.cli_options = cli_options
             else:
-                self.logger.exception("Can't set to the job context. Try to set using: job set PROJECT TYPE ASSET --refresh ")
-                raise SetCommandNotSuccessful
+                self.logger.warning("Can't set to the job context using history file.")
+                self.logger.warning("I will set you to the sandbox project instead.")
+                self.logger.warning("To avoid this behavior, try: job set PROJECT TYPE ASSET --refresh")
+                self.cli_options['PROJECT'] = 'sandbox'
+                self.cli_options['TYPE']    = 'user'
+                self.cli_options['ASSET']   = getuser()
+                
 
         # Postponed initlilization:
-        job.init(self.cli_options) 
+        job.init(self.cli_options)
+
+        # Lets check if we can find project in a first place...
+        project_path = job.job_template.expand_path_template()
+        local_templ  = job.job_template.get_local_schema_path(template='job')
+        if not isdir(project_path) or not isdir(local_templ):
+            self.logger.warning("Can't find project %s. Exiting now.", project_path)
+            return
 
         # Read additional packages from command line:
         rez_package_names = []
