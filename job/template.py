@@ -455,6 +455,29 @@ class JobTemplate(LocationTemplate):
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
 
+
+    def exists(self, job_template=None):
+        """ Check if project defined by job_template exists in a path
+            using preferenced device plugin.
+        """
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
+        device.logger.debug("Selecting device driver %s", device)
+
+        if not job_template:
+            job_template = self
+
+        project_path = job_template.expand_path_template()
+        local_templ  = job_template.get_local_schema_path(template='job')
+
+        if device.is_dir(project_path) and device.is_dir(local_templ):
+            return True
+        return False
+
     def create(self, targets=None):
         """ TODO: This is only fo testing purposes.
         """

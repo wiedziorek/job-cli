@@ -67,6 +67,8 @@ class DeviceDriver():
     # TODO: Reconsider changing one of it (plugins arch)
     # __metaclass__ = abc.ABCMeta
     # @abc.abstractmethod
+    def is_dir(self, path):
+        raise NotImplementedError('You must implement this method yourself!')
     def make_dir(self, path):
         raise NotImplementedError('You must implement this method yourself!')
     # @abc.abstractmethod
@@ -110,10 +112,10 @@ class DatabaseDriver():
         from external database.
     """
     type = PluginType.OptionReader
-    def read_project(self, **kwargs):
+    def get_project_items(self, **kwargs):
         raise NotImplementedError('You must implement this method yourself!')
 
-    def read_asset(self, **kwargs):
+    def get_asset(self, **kwargs):
         raise NotImplementedError('You must implement this method yourself!')
 
 

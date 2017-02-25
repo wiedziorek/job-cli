@@ -15,8 +15,13 @@ class LocalDevicePython(DeviceDriver, PluginManager):
 
     def register_signals(self):
         return True
-        
 
+    def is_dir(self, path):
+        """
+        """
+        from os.path import isdir
+        return isdir(path)
+        
     def make_dir(self, path):
         """ Uses standard Python facility to create a directory tree.
         """
@@ -148,6 +153,9 @@ class LocalDevicePython(DeviceDriver, PluginManager):
 
 
 class LocalDeviceShell(DeviceDriver, PluginManager):
+    """ The purpose of this class is to all sudo commands on local device.
+        In time we would like to implement ssh access to a storage.
+    """
     name = "LocalDeviceShell"
     type = PluginType.DeviceDriver
     logger = None
@@ -157,7 +165,12 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
       
     def register_signals(self):
         return True
-        
+    
+    def is_dir(self, path):
+        """
+        """
+        from os.path import isdir
+        return isdir(path)
 
     def make_dir(self, path, sudo=USE_SUDO):
         """ Uses Linux shell facility to create a directory tree.
