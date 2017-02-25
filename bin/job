@@ -36,7 +36,7 @@
 
 Usage:
   job
-  job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema --fromdb]
+  job create PROJECT [TYPE ASSET] [--log-level=INFO --root=prefix --no-local-schema --fromdb --sanitize]
   job set [PROJECT TYPE ASSET] [--rez=<rez-packages>...] [--log-level=INFO --root=prefix] [--refresh]
   job archive PROJECT 
   job read  PROJECT [TYPE ASSET] [FIELDS...] [--log-level=INFO]
@@ -52,7 +52,8 @@ Options:
   --log-level=<level>   Log level of subcommands (INFO | DEBUG) [default: INFO]
   --no-local-schema     Disable savig/loading local copy of schema on 'create' 
   --refresh             Ignore existing job context, and recreate it from scratch.
-  --root=<prefix>       Overrides root directory (for debuging purposes) 
+  --sanitize            Convert external names (from Shotgun i.e.)
+  --root=<prefix>       Overrides root directory (for debuging) 
 """
 
 import sys

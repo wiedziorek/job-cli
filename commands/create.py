@@ -109,6 +109,7 @@ class CreateJobTemplate(BaseSubCommand):
         log_lev = self.cli_options['--log-level']
         no_local= self.cli_options['--no-local-schema']
         root    = self.cli_options['--root']
+        sanitize= self.cli_options['--sanitize']
 
         
         # Usual path without database pull. 
@@ -131,7 +132,7 @@ class CreateJobTemplate(BaseSubCommand):
         else:
             # This is database path
             self.db_driver = self.plg_manager.get_plugin_by_name("ShotgunReader") 
-            project_items  = self.db_driver.get_project_items(project)
+            project_items  = self.db_driver.get_project_items(project, sanitize=sanitize)
             job = self.create_job(project, project, project, root, no_local, log_lev, dry_run=True)
 
             if not job.exists():

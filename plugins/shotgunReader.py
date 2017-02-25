@@ -144,26 +144,27 @@ class ShotgunReader(ShotgunPlugin, DatabaseDriver, PluginManager):
         self.cli_options = cli_options
 
 
-    def get_project_items(self, project, fields=None):
+    def get_project_items(self, project, fields=None, sanitize=False):
         """ Reads project items from Shotgun. Shotgun unlike job-cli distingishes
             between shots and assets. We post-process these data to get what is more
             common for our side.  
         """
+        from job.utils import AssetNameFilter as Filter
         result = []
+        filter = Filter(not sanitize)
         items = self.__read_project(project)
 
         for item in items:
             assert "code" in item
-            data = {'job_asset_name': item['code']}
+            data = {'job_asset_name': filter(item['code'])}
 
             if item['type'] == 'Asset':
-                data['job_asset_type'] = item['sg_asset_type']
+                data['job_asset_type'] = filter(item['sg_asset_type'])
 
             elif item['type'] == 'Shot':
                 if not item['sg_sequence']:
                     continue
-                    
-                data['job_asset_type'] = item['sg_sequence']['name']
+                data['job_asset_type'] = filter(item['sg_sequence']['name'])
             result += [data]
         return result
 
