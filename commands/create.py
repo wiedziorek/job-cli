@@ -47,90 +47,105 @@ class CreateJobTemplate(BaseSubCommand):
 
         return job_asset_name_list
  
-    def create_command(self):  
-        """ Main work happens here. Creates a number of insances of JobTemplates,
-            and executes its crete() command to render disk locations.
+    def create_job(self, project, type_, asset, root, no_local_schema, log_level, dry_run=False):  
+        """ Creates a number of insances of JobTemplates, and executes 
+            its create() command to render disk locations.
             Allows for bulk execution of expression based asset names.
-            Also creates missing assets (root assets) if nessecery. 
-            In a future should take into account database info, updating
-            local assets structure to Shotgun (or vice versa indicate 
-            need for updating SG to local storage.)
+
+            Params:
+                project, type, asset, root: to pass to JobTemplate class.
         """
+        from copy import deepcopy
         from job.template import JobTemplate
         from os import environ
-        log_level = self.get_log_level_from_options(self.cli_options)
-
-        job_current    = self.cli_options['PROJECT']
-        job_asset_type = self.cli_options['TYPE']
-        job_asset_name = self.cli_options['ASSET']
-
-        if self.cli_options['--root']:
-            root = self.cli_options['--root']
-        else:
-            root = None
-
-        # Project creation == no asset group (type) or asset name is specified:
-        if not job_asset_type or not job_asset_name:
-            job_asset_type = job_current
-            job_asset_name = job_current
 
         # Pack arguments so we can ommit None one (like root):
         # Should we standarize it with some class?
+        job    = None
         kwargs = {}
-        kwargs['job_current']    = job_current
-        kwargs['job_asset_type'] = job_asset_type
-        kwargs['job_asset_name'] = job_asset_name
+        kwargs['job_current']    = project
+        kwargs['job_asset_type'] = type_
+        kwargs['job_asset_name'] = asset
         kwargs['log_level']      = log_level
         kwargs['root']           = root if root else None
-
-        # If user creates first asset in project not having root asset (e.i. /name/name/name)
-        # we gonna create it for her/him. 
-        if job_current != job_asset_type != job_asset_name:
-            root_asset = kwargs.copy()
-            root_asset['job_asset_name'] = job_current
-            root_asset['job_asset_type'] = job_current
-            job = JobTemplate(**root_asset)
-            # We need to reinitialize Job() in case we want to find
-            # local schemas:
-            if not self.cli_options['--no-local-schema']:
-                local_schema_path = job.get_local_schema_path()
-                job.load_schemas(local_schema_path)
-                super(JobTemplate, job).__init__(job.schema, "job", **root_asset)
-            job.create()
-            # make sure we dump local schemas here, otherwise they will be omitted in run():
-            if not self.cli_options['--no-local-schema']:
-                job.dump_local_templates()
+       
             
-        # Asset may contain range expression which we might want to expand:
-        job_asset_type_range = self.create_job_asset_range(job_asset_type, number_mult=1, zeros=2)
-        job_asset_name_range = self.create_job_asset_range(job_asset_name)
-
-        for group in job_asset_type_range:
+        # Assets may contain range expression which we might want to expand:
+        type_range  = self.create_job_asset_range(type_, number_mult=1, zeros=2)
+        asset_range = self.create_job_asset_range(asset)
+       
+        for group in type_range:
             kwargs['job_asset_type'] = group
-            for asset in job_asset_name_range:
+            for asset in asset_range:
                 kwargs['job_asset_name'] = asset
                 job = JobTemplate(**kwargs)
-                # We need to reinitialize Job() in case we want to find
-                # local schemas:
-                if not self.cli_options['--no-local-schema']:
+                # We need to reinitialize Job() to find local schemas:
+                # This is contr-intuitive as this is most common case, not exeption.
+                if not no_local_schema:
                     local_schema_path = job.get_local_schema_path()
                     job.load_schemas(local_schema_path)
                     super(JobTemplate, job).__init__(job.schema, "job", **kwargs)
-                job.create()
+                # We may want to create jobtemplate without executing it.
+                if not dry_run and not job.exists():
+                    job.create()
 
         return job
  
     def run(self):
-        """ Entry point for sub command.
+        """ Entry point create job command. 
         """
+        from copy import deepcopy
+        import plugins
+        from job.logger import LoggerFactory
+        from job.plugin import PluginManager
 
-        if self.cli_options['create']:
-            job = self.create_command()
+        log_level        = self.cli_options['--log-level']
+        self.logger      = LoggerFactory().get_logger("CreateJobTemplate", level=log_level)
+        self.plg_manager = PluginManager(self.cli_options['--log-level'])
+    
+        project = self.cli_options['PROJECT']
+        type_   = self.cli_options['TYPE']
+        asset   = self.cli_options['ASSET']
+        log_lev = self.cli_options['--log-level']
+        no_local= self.cli_options['--no-local-schema']
+        root    = self.cli_options['--root']
 
-        # FIXME: This is temporary.
-        if job and not self.cli_options['--no-local-schema'] and \
-        self.cli_options['PROJECT'] and not self.cli_options['TYPE']:
-            job.dump_local_templates()
+        
+        # Usual path without database pull. 
+        if not self.cli_options['--fromdb']:
+
+            # Create root asset just in case (project/project/project)
+            job = self.create_job(project, project, project, root, no_local, log_lev, dry_run=True)
+            if not job.exists():
+                job.create()
+                if not no_local: 
+                    job.dump_local_templates()
+            else:
+                self.logger.warning("Job already exists. Needs update? %s", \
+                    "/".join([project, project, project]))
+
+            # Proceed with assets if specified in cli (asset and type_ may contain range expressions)
+            if type_ and asset:
+                job = self.create_job(project, type_, asset, root, no_local, log_lev)
+
+        else:
+            # This is database path
+            self.db_driver = self.plg_manager.get_plugin_by_name("ShotgunReader") 
+            project_items  = self.db_driver.get_project_items(project)
+            job = self.create_job(project, project, project, root, no_local, log_lev, dry_run=True)
+
+            if not job.exists():
+                job.create()
+                if not no_local:
+                    job.dump_local_templates() 
+
+            for item in project_items:
+                if not item['job_asset_name'] or not item['job_asset_type']:
+                    self.logger.warning("Database item missing data, can't create it: %s", str(item))
+                    continue
+                type_ = item['job_asset_type']
+                asset = item['job_asset_name']
+                job = self.create_job(project, type_, asset, root, no_local, log_lev)
 
 
 

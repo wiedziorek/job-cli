@@ -15,7 +15,7 @@ class ReadShotgun(BaseSubCommand):
             return
 
         self.shotgun_reader(self.cli_options)
-        project = self.shotgun_reader.read_project(self.cli_options['PROJECT'])
-
-        for item in project:
-            print item
+        project_items = self.shotgun_reader.read_project_items(self.cli_options['PROJECT'])
+        for item in project_items:
+        	print item
+        
