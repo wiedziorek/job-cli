@@ -151,13 +151,19 @@ class ShotgunReader(ShotgunPlugin, DatabaseDriver, PluginManager):
         """
         result = []
         items = self.__read_project(project)
+
         for item in items:
             assert "code" in item
             data = {'job_asset_name': item['code']}
+
             if item['type'] == 'Asset':
                 data['job_asset_type'] = item['sg_asset_type']
+
             elif item['type'] == 'Shot':
-                    data['job_asset_type'] = item['sg_sequence']['name']
+                if not item['sg_sequence']:
+                    continue
+                    
+                data['job_asset_type'] = item['sg_sequence']['name']
             result += [data]
         return result
 
