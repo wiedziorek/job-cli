@@ -116,7 +116,7 @@ class JobSchemaModel(Model):
     root              = StringType(required=False)
 
     #tmp:
-    log_level         = IntType(required=False)
+    log_level         = StringType(required=False)
 
 
 
