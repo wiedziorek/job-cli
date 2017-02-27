@@ -458,5 +458,6 @@ class TestShotgunReader(unittest.TestCase):
         ]
         self.assertEqual(command, result)
 
+
 if __name__ == '__main__':
     unittest.main()
