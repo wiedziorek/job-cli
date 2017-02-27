@@ -15,10 +15,10 @@ class ShotgunPlugin(object):
             except:
                 self.logger.debug("Cannot import sgtk, %s", e)
                 return False
-        self.logger.debug("%s registering as %s", self.name, self.type)
         # Create connection.
         self.sg = sgtk.util.shotgun.create_sg_connection()
         if self.sg:
+            self.logger.debug("%s registering as %s", self.name, self.type)
             return True
 
     def get_sg_type(self, ha_type):

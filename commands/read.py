@@ -11,7 +11,11 @@ class ReadShotgun(BaseSubCommand):
         import plugins
         manager = PluginManager(self.cli_options)
         self.shotgun_reader = manager.get_plugin_by_name("ShotgunReader")
-        if self.shotgun_reader:
-        	print self.shotgun_reader(self.cli_options)
-        else:
-        	print "Can't get shotgun_reader"
+        if not self.shotgun_reader:
+            return
+
+        self.shotgun_reader(self.cli_options)
+        project_items = self.shotgun_reader.read_project_items(self.cli_options['PROJECT'])
+        for item in project_items:
+        	print item
+        

@@ -99,8 +99,15 @@ class LocationTemplate(dict):
             # This will raise an exception if 
             # no path_template has been found here or up.
             template = self['path_template']
+            
+        # FIXME: This is temporary until we move on to better path templates!
+        if type(template) in (list, tuple):
+            consists = template
+        elif isinstance(template, str):
+            consists = template.split("/")
+        else:
+            raise EnvironmentError
 
-        consists = template.split("/")
         expanded_directores = []
 
         for element in consists:
@@ -329,14 +336,18 @@ class JobTemplate(LocationTemplate):
         if not self.job_options:
             self.logger.debug("Can't get options for a job! %s", self.job_options_reader.error)
 
-    def get_local_schema_path(self):
+    def get_local_schema_path(self, template=''):
         """ Once we know where to look for we may want to refer to
             local schema copy if the job/group/asset, as they might
             by edited independly from defualt schemas or any other
             present in environ varible JOB_TEMPLATE_PATH.
 
             Parms : job - object to retrieve local_schema_path templates.
-            Return: list of additional schema locations. """
+            Return: list of additional schema locations. 
+        """
+        if template and template in self['local_schema_path'].keys():
+            return self.expand_path_template(self['local_schema_path'][template])
+
         # This is ugly, should we move it to Job()?
         job_schema   = self['local_schema_path']['job']
         group_schema = self['local_schema_path']['group']
@@ -443,6 +454,29 @@ class JobTemplate(LocationTemplate):
             with open(path, 'w') as file:
                 file.write(tmpl_objects[schema])
                 self.logger.debug("Saving schema: %s", path)
+
+
+    def exists(self, job_template=None):
+        """ Check if project defined by job_template exists in a path
+            using preferenced device plugin.
+        """
+        prefered_devices = self.__preferences['plugin']['DeviceDriver']
+        device = self.plg_manager.get_first_maching_plugin(prefered_devices)
+
+        if not device:
+            self.logger.exception("Can't find prefered device %s", prefered_devices)
+            raise IOError
+        device.logger.debug("Selecting device driver %s", device)
+
+        if not job_template:
+            job_template = self
+
+        project_path = job_template.expand_path_template()
+        local_templ  = job_template.get_local_schema_path(template='job')
+
+        if device.is_dir(project_path) and device.is_dir(local_templ):
+            return True
+        return False
 
     def create(self, targets=None):
         """ TODO: This is only fo testing purposes.

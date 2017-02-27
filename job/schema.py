@@ -110,12 +110,13 @@ class JobSchemaModel(Model):
     link_root   = StringType(required=False)
     link_target = PathTemplateType(required=False)
     
+    asset_id_template = ListType(StringType, required=False)
     path_template     = PathTemplateType(required=False)
     local_schema_path = DictType(PathTemplateType, required=False)
     root              = StringType(required=False)
 
     #tmp:
-    log_level         = IntType(required=False)
+    log_level         = StringType(required=False)
 
 
 
