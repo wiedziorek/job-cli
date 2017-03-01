@@ -103,7 +103,8 @@ class CreateJobTemplate(BaseSubCommand):
         kwargs['job_asset_type'] = type_
         kwargs['job_asset_name'] = asset
         kwargs['log_level']      = log_level
-        kwargs['root']           = root if root else None
+        if root:
+            kwargs['root'] = root
        
             
         # Assets may contain range expression which we might want to expand:
