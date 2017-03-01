@@ -403,6 +403,8 @@ class JobTemplate(LocationTemplate):
         # TODO: Should we save schema' sources or recreate schames from objects?
         # Clear storage before rendering, so we make sure all possible changes in templates
         # (life objects opposite to shemas which are stored on disk.) will take effect. 
+        from tempfile import NamedTemporaryFile
+
         tmpl_objects    = {}
         exclude_inlines = []
         targets = self.render(clear_storage=True).values()
@@ -449,11 +451,13 @@ class JobTemplate(LocationTemplate):
         dumps_recursive(self, tmpl_objects, exclude_names=exclude_inlines)
 
         for schema in tmpl_objects:
-            path = os.path.join(prefix_path, schema + ".%s" % self.SCHEMA_FILE_EXTENSION)
+            destination_file = os.path.join(prefix_path, schema + ".%s" % self.SCHEMA_FILE_EXTENSION)
             # TODO: use DeviceManager for this.
-            with open(path, 'w') as file:
+            with NamedTemporaryFile() as file:
                 file.write(tmpl_objects[schema])
-                self.logger.debug("Saving schema: %s", path)
+                file.flush()
+                device.copy_file(file.name, destination_file)
+                self.logger.debug("Saving schema: %s", destination_file)
 
 
     def exists(self, job_template=None):

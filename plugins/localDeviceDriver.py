@@ -3,7 +3,7 @@ from logging import INFO
 import os, stat
 
 # TODO: remove
-USE_SUDO = False
+USE_SUDO = True
 
 class LocalDevicePython(DeviceDriver, PluginManager):
     name = "LocalDevicePython"
@@ -39,6 +39,32 @@ class LocalDevicePython(DeviceDriver, PluginManager):
         except OSError, e:
             self.logger.exception("Couldn't make %s",  path)
             raise OSError
+
+
+    def copy_file(self, source, target):
+        """ Uses standard Python facility to copy file.
+        """
+        from shutil import copyfile
+
+        if not os.path.exists(source):
+            self.logger.warning("File doesn't exists %s",  source)
+            return False
+
+        if os.path.exists(target):
+            self.logger.warning("File exists, can't copy %s", target)
+            return False
+        
+        try:
+            path, file = os.path.split(source)
+            os.makedirs(path)
+            copyfile(source, target)
+
+            self.logger.info("Copying %s to %s", source, target)
+            return True
+        except IOError, e:
+            self.logger.exception("Couldn't copy %s",  source)
+            raise IOError
+
 
     def make_link(self, path, link_path):
 
@@ -190,11 +216,43 @@ class LocalDeviceShell(DeviceDriver, PluginManager):
                 self.logger.info("Making %s", path)
                 return True
             else:
-                self.logger.exception(err)
+                print err
+                self.logger.exception(str(err))
                 raise OSError
         except OSError, e:
             self.logger.exception("Couldn't make %s",  path)
             raise OSError
+
+    def copy_file(self, source, target, sudo=USE_SUDO):
+        """ Uses Linux shell facility to create a directory tree.
+        """
+        from subprocess import Popen, PIPE
+        command = []
+         
+        if not os.path.exists(source):
+            self.logger.warning("File doesn't exist %s", source)
+            return False
+
+        if os.path.exists(target):
+            self.logger.warning("File exists %s", target)
+            return False
+
+        try:
+            if sudo:
+                command += ["sudo"]
+
+            command += ["cp", "-r", source, target]
+            out, err = Popen(command, shell=False, stdout=PIPE, stderr=PIPE).communicate()
+            if not err:
+                self.logger.info("Copying %s to %s", source, target)
+                return True
+            else:
+                self.logger.exception(err)
+                raise IOError
+        except IOError, e:
+            self.logger.exception("Couldn't copy %s",  source)
+            raise IOError
+
 
     def make_link(self, path, link_path, sudo=USE_SUDO):
         from subprocess import Popen, PIPE
