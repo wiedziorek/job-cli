@@ -1,7 +1,6 @@
-#!/usr/bin/python
 import sys
 from os.path import realpath, dirname, join
-import unittest 
+import unittest
 
 # Get root directory
 job_root_path = dirname(realpath(__file__))
@@ -24,467 +23,199 @@ import plugins
 manager = PluginManager()
 driver = manager.get_plugin_by_name("ShotgunDriver")
 
+# Import modules needed for testing
+import os
+import json
+import time
+
 
 class TestShotgunDriver(unittest.TestCase):
 
-    def test_create_asset(self):
-        """ Test create_asset() method
-        """
-        command = driver.create_asset("foo", "char", "bird")
-        print command
+    def __init__(self, *args, **kwargs):
+        super(TestShotgunDriver, self).__init__(*args, **kwargs)
+        self.results = self.load_results()
+        
+    def load_results(self):
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(dir_path, "test_shotgunDriver.json")
+        with open(file_path, "r") as file_:
+            contents = json.load(file_)
+        return contents
 
-    def test_create_shot(self):
-        """ Test create_shot() method
+    def test_read_entity_fields(self):
+        """ Get all fields used to descibe a Shotgun Asset entity
         """
-        command = driver.create_shot("foo", "eggs", "egg0070")
-        print command
-
-    def test_create_sequence(self):
-        """ Test create sequence() methd
-        """
-        command = driver.create_sequence("foo", "eggs")
-        print command
-
-    def test_create_project(self):
-        """ Test create_project() method
-        """
-        command = driver.create_project("spam")
-        print command
-
-    '''
-
-    def test_get_asset_fields(self):
-        """ Test get_asset_fields() method
-        """
-        command = driver.get_asset_fields()
-        result = \
-        [
-            'addressings_cc', 'asset_library_sg_ha_assets_asset_libraries',
-            'assets', 'cached_display_name', 'code', 'created_at',
-            'created_by', 'description', 'filmstrip_image', 'id', 'image',
-            'mocap_takes', 'notes', 'open_notes','open_notes_count', 'parents',
-            'project', 'sequences', 'sg_asset_type', 'sg_episodes',
-            'sg_published_files', 'sg_status_list', 'sg_texture_stat',
-            'sg_versions', 'shoot_days', 'shots', 'step_0', 'step_10',
-            'step_11', 'step_12', 'step_14', 'step_15', 'step_16', 'step_17',
-            'step_18', 'step_19', 'step_20', 'step_30', 'step_9', 'tag_list',
-            'task_template', 'tasks', 'updated_at', 'updated_by'
-        ]
-        self.assertEqual(command, result)
-
-    def test_get_shot_fields(self):
-        """ Test get_shot_fields() method
-        """
-        command = driver.get_shot_fields()
-        result = \
-        [
-            'addressings_cc', 'assets', 'cached_display_name', 'code',
-            'created_at', 'created_by', 'cut_duration', 'cut_in', 'cut_out',
-            'description', 'filmstrip_image', 'head_duration', 'head_in',
-            'head_out', 'id', 'image', 'notes', 'open_notes',
-            'open_notes_count', 'parent_shots', 'project', 'sg_animatortmp',
-            'sg_box_scale', 'sg_camera_type', 'sg_cut_duration', 'sg_cut_in',
-            'sg_cut_order', 'sg_cut_out', 'sg_end_date', 'sg_episodes',
-            'sg_format', 'sg_ha_blocking_status', 'sg_ha_cameras',
-            'sg_ha_sataus', 'sg_ha_sort', 'sg_head_in', 'sg_lens',
-            'sg_old_cut_duration', 'sg_orginal_resolution',
-            'sg_published_files', 'sg_sequence', 'sg_shot_type',
-            'sg_skala_berlinek', 'sg_skala_berlinek_bk',
-            'sg_skala_berlinek_lod', 'sg_start_date', 'sg_status_list',
-            'sg_tail_out', 'sg_versions', 'sg_working_duration', 'shots',
-            'smart_cut_duration', 'smart_cut_in', 'smart_cut_out',
-            'smart_cut_summary_display', 'smart_duration_summary_display',
-            'smart_head_duration', 'smart_head_in', 'smart_head_out',
-            'smart_tail_duration', 'smart_tail_in', 'smart_tail_out',
-            'smart_working_duration', 'step_0', 'step_13', 'step_21', 'step_25',
-            'step_26', 'step_28', 'step_29', 'step_32', 'step_5', 'step_6',
-            'step_7', 'step_8', 'tag_list', 'tail_duration', 'tail_in',
-            'tail_out', 'task_template', 'tasks', 'updated_at', 'updated_by'
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_asset_char(self):
-        """ Test read_asset() method. Query about a character asset
-        """
-        command = driver.read_asset('test', 'char', 'boy')
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character'
-            }
-        ]
-        self.assertEqual(command, result)
-
-
-    def test_read_asset_char_fields(self):
-        """ Test read_asset() method. Query about a character asset.
-        Give extra fields to display
-        """
-        command = driver.read_asset('test', 'char', 'boy', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'sg_status_list': 'wtg'
-            },
-        ]
-        self.assertEqual(command, result)
-    
-    def test_read_asset_shot(self):
-        """ Test read_asset() method. Query about a shot
-        """
-        command = driver.read_asset('test', 'foo', 'foo0010')
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_asset_shot_fields(self):
-        """ Test read_asset() method. Query about a shot.
-        Give extra fields to display
-        """
-        command = driver.read_asset('test', 'foo', 'foo0010', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_type_sequence(self):
-        """ Test read_type() method. Query about a sequence
-        """
-        command = driver.read_type('test', 'foo')
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                }
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_type_sequence_fields(self):
-        """ Test read_type() method. Query about a sequence.
-        Give extra fields to display
-        """
-        command = driver.read_type('test', 'foo', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_type_char(self):
-        """ Test read_type() method. Query about an asset group
-        """
-        command = driver.read_type('test', 'char')
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_type_char_fields(self):
-        """ Test read_type() method. Query about an asset group.
-        Give extra fields to display
-        """
-        command = driver.read_type('test', 'char', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_project_assets(self):
-        """ Test read_project_assets() method
-        """
-        command = driver.read_project_assets('test')
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_project_assets_fields(self):
-        """ Test read_project_assets() method. Give extra fields to display
-        """
-        command = driver.read_project_assets('test', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_project_shots(self):
-        """ Test read_project_shots() method
-        """
-        command = driver.read_project_shots('test')
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                }
-            }
-        ]
-        self.assertEqual(command, result)
-
-    def test_read_project_shots_fields(self):
-        """ Test read_project_shots() method. Give extra fields to display
-        """
-        command = driver.read_project_shots('test', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
+        command = driver._ShotgunDriver__read_entity_fields("Asset")
+        result = self.assertEqual(command, self.results["read_entity_fields"])
 
     def test_read_project(self):
-        """ Test read_project() method
+        """ Get a Shotgun Project entity
         """
-        command = driver.read_project('test')
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character'
-            },
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                }
-            }
-        ]
-        self.assertEqual(command, result)
+        command = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        result = self.assertEqual(command, self.results["read_project"])
 
     def test_read_project_fields(self):
-        """ Test read_project() method. Give extra fields to display
+        """ Get a Shotgun Project entity with optional fields
         """
-        command = driver.read_project('test', ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'sg_status_list': 'wtg'
-            },
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-                'sg_status_list': 'wtg'
-            }
-        ]
-        self.assertEqual(command, result)
+        fields = ["sg_status"]
+        command = driver._ShotgunDriver__read_project("BIG BUCK BUNNY", fields)
+        self.assertEqual(command, self.results["read_project_fields"])
 
-    def test_get_shots_by_user(self):
-        """ Test get_shots_by_user() method
+    def test_read_asset_type(self):
+        """ Get a Shotgun AssetType entity
         """
-        command = driver.get_shots_by_user('test', 'Kamil Salem')
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo',
-                },
-                'tasks':
-                [
-                    {
-                        'type': 'Task',
-                        'id': 24480,
-                        'name': 'body_animation'
-                    }
-                ]
-            }
-        ]
-        self.assertEqual(command, result)
- 
-    def test_get_shots_by_user_fields(self):
-        """ Test get_shots_by_user() method. Give extra fields to display
+        command = driver._ShotgunDriver__read_asset_type("char")
+        self.assertEqual(command, "Character")
+
+    def test_read_sequence(self):
+        """ Get a Shotgun Sequence entity
         """
-        command = driver.get_shots_by_user('test', 'Kamil Salem',
-                                            ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Shot',
-                'id': 3426,
-                'code': 'foo0010',
-                'sg_sequence':
-                {
-                    'type': 'Sequence',
-                    'id': 203,
-                    'name': 'foo'
-                },
-                'sg_status_list': 'wtg',
-                'tasks':
-                [
-                    {
-                        'type': 'Task',
-                        'id': 24480,
-                        'name': 'body_animation'
-                    }
-                ]
-            }
-        ]
-        self.assertEqual(command, result)
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        command = driver._ShotgunDriver__read_sequence(sg_project, "bunny_010")
+        self.assertEqual(command, self.results["read_sequence"])
 
-    def test_get_assets_by_user(self):
-        """ Test get_assets_by_user() method
+    def test_read_sequence_fields(self):
+        """ Get a Shotgun Sequence entity with optional fields
         """
-        command = driver.get_assets_by_user('test', 'Kamil Salem')
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'tasks':
-                [
-                    {
-                        'type': 'Task',
-                        'id': 24479,
-                        'name': 'body_rig'
-                    }
-                ]
-            }
-        ]
-        self.assertEqual(command, result)
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        fields = ["description"]
+        command = driver._ShotgunDriver__read_sequence(sg_project, "bunny_010", fields)
+        self.assertEqual(command, self.results["read_sequence_fields"])
 
-    def test_get_assets_by_user_fields(self):
-        """ Test get_assets_by_user() method. Give extra fields to display
+    def test_read_asset(self):
+        """ Get a Shotgun Asset entity
         """
-        command = driver.get_assets_by_user('test', 'Kamil Salem',
-                                            ['sg_status_list'])
-        result = \
-        [
-            {
-                'type': 'Asset',
-                'id': 2118,
-                'code': 'boy',
-                'sg_asset_type': 'Character',
-                'sg_status_list': 'wtg',
-                'tasks':
-                [
-                    {
-                        'type': 'Task',
-                        'id': 24479,
-                        'name': 'body_rig'
-                    }
-                ]
-            }
-        ]
-        self.assertEqual(command, result)
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_asset_type = driver._ShotgunDriver__read_asset_type("char")
+        command = driver._ShotgunDriver__read_asset(sg_project, sg_asset_type, "Bunny")
+        self.assertEqual(command, self.results["read_asset"])
 
-    '''
+    def test_read_asset_fields(self):
+        """ Get a Shotgun Asset entity with optional fields
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_asset_type = driver._ShotgunDriver__read_asset_type("char")
+        fields = ["description"]
+        command = driver._ShotgunDriver__read_asset(sg_project, sg_asset_type, "Bunny", fields)
+        self.assertEqual(command, self.results["read_asset_fields"])
 
-if __name__ == '__main__':
+    def test_read_shot(self):
+        """ Get a Shotgun Shot entity
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_sequence = driver._ShotgunDriver__read_sequence(sg_project, "bunny_010")
+        command = driver._ShotgunDriver__read_shot(sg_sequence, "bunny_010_0010")
+        self.assertEqual(command, self.results["read_shot"])
+
+    def test_read_shot_fields(self):
+        """ Get a Shotgun Shot entity with optional fields
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_sequence = driver._ShotgunDriver__read_sequence(sg_project, "bunny_010")
+        fields = ["description"]
+        command = driver._ShotgunDriver__read_shot(sg_sequence, "bunny_010_0010", fields)
+        self.assertEqual(command, self.results["read_shot_fields"])
+
+    def test_read_user(self):
+        """ Get a Shotgun User entity
+        """
+        command = driver._ShotgunDriver__read_user("ksalem")
+        self.assertEqual(command, self.results["read_user"])
+
+    def test_read_user_fields(self):
+        """ Get a Shotgun User entity with optional fields
+        """
+        fields = ["department"]
+        command = driver._ShotgunDriver__read_user("ksalem", fields)
+        self.assertEqual(command, self.results["read_user_fields"])
+
+    def test_read_project_items(self):
+        """ Get all Shotgun Asset and Shot entities in a given project
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        command = driver._ShotgunDriver__read_project_items(sg_project)
+        self.assertEqual(command, self.results["read_project_items"])
+
+    def test_read_project_assets(self):
+        """ Get all Shotgun Asset entities in a given project
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        command = driver._ShotgunDriver__read_project_assets(sg_project)
+        self.assertEqual(command, self.results["read_project_assets"])
+
+    def test_read_project_assets_by_type(self):
+        """ Get all Shotgun Asset entities of a selected type in a given project
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_asset_type = driver._ShotgunDriver__read_asset_type("char")
+        command = driver._ShotgunDriver__read_project_assets_by_type(sg_project, sg_asset_type)
+        self.assertEqual(command, self.results["read_project_assets_by_type"])
+
+    def test_read_project_shots(self):
+        """ Get all Shotgun Asset entities in a given project
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        command = driver._ShotgunDriver__read_project_shots(sg_project)
+        self.assertEqual(command, self.results["read_project_shots"])
+
+    def test_read_sequence_shots(self):
+        """ Get all Shotgun Shot entities in a given sequence
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_sequence = driver._ShotgunDriver__read_sequence(sg_project, "bunny_010")
+        command = driver._ShotgunDriver__read_sequence_shots(sg_sequence)
+        self.assertEqual(command, self.results["read_sequence_shots"])
+
+    def test_read_user_assets(self):
+        """ Get all Shotgun Assets entities with task assigned to a given user
+        """
+        sg_project = driver._ShotgunDriver__read_project("BIG BUCK BUNNY")
+        sg_user = driver._ShotgunDriver__read_user("ksalem")
+        sg_tasks = driver._ShotgunDriver__read_user_tasks(sg_project, sg_user)
+        command = driver._ShotgunDriver__read_user_assets(sg_tasks)
+        self.assertEqual(command, self.results["read_user_assets"])
+    
+    def test_create_delete_project(self):
+        """ Create a project in Shotgun than delete it
+        """
+        date = str(int(time.time()))
+        name = "_".join(["test", date])
+        sg_project = driver._ShotgunDriver__create_project(name)
+        command = driver._ShotgunDriver__delete_project(sg_project)
+        self.assertEqual(command, True)
+
+    def test_create_delete_sequence(self):
+        """ Create a sequence in Shotgun than delete it
+        """
+        date = str(int(time.time()))
+        name = "_".join(["test", date])
+        sg_project = driver._ShotgunDriver__read_project("sgtkTest")
+        sg_sequence = driver._ShotgunDriver__create_sequence(sg_project, name)
+        command = driver._ShotgunDriver__delete_sequence(sg_sequence)
+        self.assertEqual(command, True)
+
+    def test_create_delete_asset(self):
+        """ Create an asset in Shotgun than delete it
+        """
+        date = str(int(time.time()))
+        name = "_".join(["test", date])
+        sg_project = driver._ShotgunDriver__read_project("sgtkTest")
+        sg_asset_type = driver._ShotgunDriver__read_asset_type("prop")
+        sg_asset = driver._ShotgunDriver__create_asset(sg_project, sg_asset_type, name)
+        command = driver._ShotgunDriver__delete_asset(sg_asset)
+        self.assertEqual(command, True)
+
+    def test_create_delete_shot(self):
+        """ Create a shot in Shotgun than delete it
+        """
+        date = str(int(time.time()))
+        name = "_".join(["test", date])
+        sg_project = driver._ShotgunDriver__read_project("sgtkTest")
+        sg_sequence = driver._ShotgunDriver__read_sequence(sg_project, "sgtkTest")
+        sg_shot = driver._ShotgunDriver__create_shot(sg_project, sg_sequence, name)
+        command = driver._ShotgunDriver__delete_shot(sg_shot)
+        self.assertEqual(command, True)
+
+
+if __name__ == "__main__":
     unittest.main()

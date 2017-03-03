@@ -37,8 +37,8 @@
 # Import Job modules
 from job.plugin import PluginManager, PluginType, DatabaseDriver
 
-#STUDIO_SGTK_PATH = "/STUDIO/sgtk/studio/install/core/python"
-STUDIO_SGTK_PATH = "/home/ksalem/sgtk-test/studio/install/core/python/"
+STUDIO_SGTK_PATH = "/STUDIO/sgtk/studio/install/core/python"
+#STUDIO_SGTK_PATH = "/home/ksalem/sgtk-test/studio/install/core/python/"
 
 
 class ShotgunDriver(DatabaseDriver, PluginManager):
@@ -63,299 +63,326 @@ class ShotgunDriver(DatabaseDriver, PluginManager):
             self.logger.debug("%s registering as %s", self.name, self.type)
             return True
 
-    def get_sg_type(self, ha_type):
-        if ha_type in ["char", "prop", "set"]:
-            return "Asset"
-        else:
-            return "Shot"
+    def __read_entity_fields(self, entity_name):
+        """ Get all fields used to describe a Shotgun entity
+        
+        :entity_name:           Entity name
+        :returns:               List of Shotgun fields
+        """
+        schema = self.sg.schema_field_read(entity_name)
+        fields = schema.keys()
+        return sorted(fields)
 
-    def get_sg_asset_type(self, ha_type):
-        if ha_type == "char":
+    def __read_project(self, project, fields=None):
+        """ Get a Shotgun Project entity
+        
+        :param project:         Project name
+        :returns:               Project entity
+        """
+        filters = list()
+        filters.append(["name", "is", project])
+        if not fields: fields = []
+        fields.extend(["name"])
+        return self.sg.find_one("Project", filters, fields)
+
+    def __read_asset_type(self, asset_type):
+        """ Get a Shotgun AssetType entity
+
+        :param asset_type:      AssetType name
+        :returns:               AssetType entity
+        """
+        if asset_type == "char":
             return "Character"
-        elif ha_type == "prop":
+        elif asset_type == "prop":
             return "Prop"
-        elif ha_type == "set":
+        elif asset_type == "set":
             return "Environment"
         else:
             return None
 
-    def get_sg_project(self, name):
-        return self.sg.find_one("Project", [["name", "is", name]])
-
-    def get_sg_sequence(self, project, code):
+    def __read_sequence(self, sg_project, sequence, fields=None):
+        """ Get a Shotgun Sequence entity
+        
+        :param sg_project:      Project entity
+        :param sequence:        Sequence name
+        :returns:               Sequence entity
+        """
         filters = list()
-        filters.append(["project", "is", project])
-        filters.append(["code", "is", code])
-        return self.sg.find_one("Sequence", filters)
-
-    def get_sg_asset(self, sg_project, sg_asset_type, code, fields=None):
+        filters.append(["project", "is", sg_project])
+        filters.append(["code", "is", sequence])
         if not fields: fields = []
+        fields.extend(["code"])
+        return self.sg.find_one("Sequence", filters, fields)
+
+    def __read_asset(self, sg_project, sg_asset_type, asset_name, fields=None):
+        """ Get a Shotgun Asset entity
+        
+        :param sg_project:      Project entity
+        :param sg_asset_type:   AssetType entity
+        :param asset_name:      Asset name
+        :returns:               Asset entity
+        """
         filters = list()
         filters.append(["project", "is", sg_project])
         filters.append(["sg_asset_type", "is", sg_asset_type])
-        filters.append(["code", "is", code])
+        filters.append(["code", "is", asset_name])
+        if not fields: fields = []
         fields.extend(["code", "sg_asset_type", "sg_sequence"])
+        return self.sg.find_one("Asset", filters, fields)
+
+    def __read_shot(self, sg_sequence, shot, fields=None):
+        """ Get a Shotgun Shot entity
+        
+        :param sg_project:      Project entity
+        :param sg_sequence:     Sequence entity
+        :param shot:            Shot name
+        :param fields:          Optional Shotgun fields
+        :returns:               Shot entity
+        """
+        filters = list()
+        filters.append(["sg_sequence", "is", sg_sequence])
+        filters.append(["code", "is", shot])
+        if not fields: fields = []
+        fields.extend(["code", "sg_asset_type", "sg_sequence"])
+        return self.sg.find_one("Shot", filters, fields)
+
+    def __read_user(self, user, fields=None):
+        """ Get a Shotgun HumanUser entity
+
+        :param user:            User name
+        :param fields:          Optional Shotgun fields
+        :returns:               User entity
+        """
+        user = ".".join([user[:1], user[1:]])
+        filters = list()
+        filters.append(["login", "is", user])
+        if not fields: fields = []
+        fields.extend(["login"])
+        return self.sg.find("HumanUser", filters, fields)
+
+    def __read_project_items(self, sg_project, fields=None):
+        """ Get all Shotgun Assset and Shot entities in a given project.
+        By default, returned fields are: id, code, type, and either
+        sg_asset_type or sg_sequence
+        
+        :param sg_project:      Project entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Asset and Shot entities
+        """
+        sg_assets = self.__read_project_assets(sg_project, fields)
+        sg_shots = self.__read_project_shots(sg_project, fields)
+        return sg_assets + sg_shots
+
+    def __read_project_assets(self, sg_project, fields=None):
+        """ Get all Shotgun Asset entities in a given project.
+        By default, returned fields are: type, id, code, and sg_asset_type
+
+        :param sg_project:      Project entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Asset entities
+        """
+        filters = list()
+        filters.append(["project", "is", sg_project])
+        if not fields: fields = []
+        fields.extend(["code", "sg_asset_type"])
         return self.sg.find("Asset", filters, fields)
 
-    def get_sg_shot(self, sg_project, sg_sequence, code, fields=None):
-        if not fields: fields = []
+    def __read_project_assets_by_type(self, sg_project, sg_asset_type, fields=None):
+        """ Get all Shotgun Asset entities of a selected type in a given project.
+        By default, returned fields are: type, id, code, and sg_asset_type
+
+        :param sg_project:      Project entity
+        :param sg_asset_type:   AssetType entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Asset entities
+        """
         filters = list()
         filters.append(["project", "is", sg_project])
-        filters.append(["sg_sequence", "is", sg_sequence])
-        filters.append(["code", "is", code])
-        fields.extend(["code", "sg_asset_type", "sg_sequence"])
+        filters.append(["sg_asset_type", "is", sg_asset_type])
+        if not fields: fields = []
+        fields.extend(["code", "sg_asset_type"])
+        return self.sg.find("Asset", filters, fields)
+
+    def __read_project_shots(self, sg_project, fields=None):
+        """ Get all Shotgun Shot entities in a given project.
+        By default, returned fields are: type, id, code, and sg_sequence
+
+        :param sg_project:      Project entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Shot entities
+        """
+        filters = list()
+        filters.append(["project", "is", sg_project])
+        if not fields: fields = []
+        fields.extend(["code", "sg_sequence"])
         return self.sg.find("Shot", filters, fields)
 
-    def get_sg_project_content(self, sg_type, sg_project, fields=None,
-                                     sg_asset_type=None):
+    def __read_sequence_shots(self, sg_sequence, fields=None):
+        """ Get all Shotgun Shot entities in a given sequence.
+        By default, returned fields are: type, id, and code
+
+        :param sg_project:      Project entity
+        :param sg_sequence:     Sequence entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Shot entities
+        """
+        filters = list()
+        filters.append(["sg_sequence", "is", sg_sequence])
         if not fields: fields = []
+        fields.extend(["code"])
+        return self.sg.find("Shot", filters, fields)
+
+    def __read_user_items(self, sg_project, sg_user, fields=None):
+        """ Get all Shotgun Shot and Asset entities with tasks assigned to
+        a given user
+        
+        :param sg_project:      Project entity
+        :param sg_user:         User entity
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Shot and Asset entities
+        """
+        sg_shots = self.__read_user_shots(sg_project, sg_user, fields)
+        sg_assets = self.__read_user_assets(sg_project, sg_user, fields)
+        return sg_shots + sg_assets
+
+    def __read_user_tasks(self, sg_project, sg_user, fields=None):
+        """ Get all Tasks assigned to a given user
+        """
         filters = list()
         filters.append(["project", "is", sg_project])
-        if sg_asset_type:
-            filters.append(["sg_asset_type", "is", sg_asset_type])
-        fields.extend(["code", "sg_asset_type", "sg_sequence"])
-        return self.sg.find(sg_type, filters, fields)
-
-    def get_asset_tasks(self, sg_assets, sg_user):
-        filters = list()
-        filters.append(["asset", "in", sg_assets])
-        filters.append(["task_assignees", "contains", sg_user])
+        filters.append(["task_assignees", "is", sg_user])
         return self.sg.find("Task", filters)
 
-    def get_sg_user(self, name):
+    def __read_user_entities(self, sg_tasks, entity_name, fields=None):
+        """ Get all entities with a tasks assigned to a selected user
+        in a given project. By default, returned fields are: id, code, type.
+
+        :param sg_tasks:        List of Task entities
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Asset entities
+        """
+        # Create a list of tasks for a subfilter
+        task_filter = list()
+        for task in sg_tasks:
+            task_filter.append(["tasks", "is", task])
+        # Create a subfilter
+        subfilter = dict()
+        subfilter["filter_operator"] = "any"
+        subfilter["filters"] = task_filter
+        # Create new filters
         filters = list()
-        filters.append(["name", "is", name])
-        return self.sg.find("HumanUser", filters)
-
-    def check_task_user(self, task_id, sg_user):
-        filters = list()
-        filters.append(["id", "is", task_id])
-        filters.append(["task_assignees", "is", sg_user])
-        return self.sg.find_one("Task", filters)
-
-    def get_asset_fields(self):
-        """ Get all fields used by Shotgun to describe an Asset entity
-
-        :returns:           A list of Shotgun field names
-        """
-        schema = self.sg.schema_field_read('Asset')
-        fields = schema.keys()
-        return sorted(fields)
-
-    def get_shot_fields(self):
-        """ Get all fields used by Shotgun to describe a Shot entity
-
-        :returns:           A list of Shotgun field names
-        """
-        schema = self.sg.schema_field_read('Shot')
-        fields = schema.keys()
-        return sorted(fields)
-
-    def read_asset(self, project, asset_type, asset_name, fields=None):
-        """ Get values of Shotgun fields on a given shot or asset. By default,
-        information on id, code, type, and either sg_sequence or sg_asset_type
-        is displayed
-
-        :param project:       Name of the project
-        :param asset_type:    Name of the sequence or asset type
-        :param asset_name:    Name of the shot or asset
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on a shot or asset
-        """
+        filters.append(subfilter)
+        # Make the final search
         if not fields: fields = []
-        sg_project = self.get_sg_project(project)
-        if self.get_sg_type(asset_type) == "Shot":
-            sg_sequence = self.get_sg_sequence(sg_project, asset_type)
-            return self.get_sg_shot(sg_project, sg_sequence, asset_name, fields)
-        else:
-            sg_asset_type = self.get_sg_asset_type(asset_type)       
-            return self.get_sg_asset(sg_project, sg_asset_type, asset_name, fields)
+        fields.extend(["code"])
+        return self.sg.find(entity_name, filters, fields)
 
-    def read_type(self, project, asset_type, fields=None):
-        """ Get values of Shotgun fields of either all shots in a given sequence
-        or all assets in a given asset group. By default, information on id,
-        code, type, and either sg_sequence or sg_asset_type is displayed
+    def __read_user_assets(self, sg_tasks, fields=None):
+        """ Get all Shotgun Asset entities with a tasks assigned to a selected
+        user in a given project. By default, returned fields are: id, code, type.
 
-        :param project:     Name of the project
-        :param asset_type:  Name of the sequence or asset type
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on shots or assets
+        :param sg_tasks:        List of Task entities
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Asset entities
         """
-        if not fields: fields = []
-        sg_project = self.get_sg_project(project)
-        sg_type = self.get_sg_type(asset_type)
-        sg_asset_type = self.get_sg_asset_type(asset_type)
-        return self.get_sg_project_content(sg_type, sg_project, fields, sg_asset_type)
+        return self.__read_user_entities(sg_tasks, "Asset", fields)
 
-    def read_project_assets(self, project, fields=None):
-        """ Get values of Shotgun fields of all assets in a given project.
-        By default, information on id, code, type, and sg_asset_type is displayed
+    def __read_user_shots(self, sg_tasks, fields=None):
+        """ Get all Shotgun Shot entities with a tasks assigned to a selected
+        user in a given user. By default, returned fields are: id, code, type.
 
-        :param project:     Name of the project
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on assets
+        :param sg_tasks:        List of Task entities
+        :param fields:          Optional Shotgun fields
+        :returns:               List of Shot entities
         """
-        if not fields: fields = []
-        sg_project = self.get_sg_project(project)
-        return self.get_sg_project_content("Asset", sg_project, fields)
+        return self.__read_user_entities(sg_tasks, "Shots", fields)
 
-    def read_project_shots(self, project, fields=None):
-        """ Get values of Shotgun fields of all shots in a given project.
-        By default, information on id, code, type, and sg_sequence is displayed
-
-        :param project:     Name of the project
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on shots
-        """
-        if not fields: fields = []
-        sg_project = self.get_sg_project(project)
-        return self.get_sg_project_content("Shot", sg_project, fields)
-
-    def __read_project(self, project, fields=None):
-        """ Get values of Shotgun fields of all shots and assets in a given
-        project. By default, information on id, code, type and either sg_sequence
-        or sg_asset_type is displayed
-
-        :param project:     Name of the project
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on shots
-        """
-        assets = self.read_project_assets(project, fields)
-        shots = self.read_project_shots(project, fields)
-        return assets + shots
-
-    def get_assets_by_user(self, project, user, fields=None):
-        """ Get values of Shotgun fields of all assets which have tasks
-        assigned to a given user. By default, information on id, code, type,
-        and sg_asset_type is displayed
-        
-        :param project:     Name of the project
-        :param user:        First name and surname of a user (e.g. John Smith)
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on assets
-        """
-        if not fields: fields = []
-        fields.append('tasks')
-        sg_user = self.get_sg_user(user)
-        sg_assets = self.read_project_assets(project, fields)
-        result = list()
-        for asset in sg_assets:
-            for task in asset['tasks']:
-                if self.check_task_user(task['id'], sg_user):
-                    result.append(asset)
-        return result
-
-    def get_shots_by_user(self, project, user, fields=None):
-        """ Get values of Shotgun fields of all shots which have tasks
-        assigned to a given user. By default, information on id, code, type
-        and sg_sequence is displayed
-
-        :param project:     Name of the project
-        :param user:        First name and surname of a user (e.g. John Smith)
-        :param fields:      Optional Shotgun fields to display
-        :returns:           A dictionary with information on shots
-        """
-        if not fields: fields = []
-        fields.append('tasks')
-        sg_user = self.get_sg_user(user)
-        sg_shots = self.read_project_shots(project, fields)
-        result = list()
-        for shot in sg_shots:
-            for task in shot['tasks']:
-                if self.check_task_user(task['id'], sg_user):
-                    result.append(shot)
-        return result
-
-    def create_asset(self, project, asset_type, asset_name):
-        """ Create an asset in Shotgun
-        :param project:     Name of the project
-        :param asset_type:  Name of the asset type
-        :param asset_name:  Name of the asset
-        :returns:           A dictionary with the information on the new asset
-        """
-        sg_project = self.get_sg_project(project)
-        if not sg_project:
-            sg_project = self.create_project(project)
-        sg_asset_type = self.get_sg_asset_type(asset_type)
-        if self.get_sg_asset(sg_project, sg_asset_type, asset_name):
-            raise ValueError ("Asset already exists!")
-        data = {
-            "project": sg_project,
-            "sg_asset_type": sg_asset_type,
-            "code": asset_name
-        }
-        return self.sg.create("Asset", data)
-        return data
-
-    def create_shot(self, project, sequence, shot):
-        """ Create a shot in Shotgun
-        :param project:     Name of the project
-        :param sequence:    Name of the sequence
-        :param shot:        Name of the shot
-        :returns:           A dictionary with the information on the new shot
-        """
-        sg_project = self.get_sg_project(project)
-        if not sg_project:
-            sg_project = self.create_project(project)
-        sg_sequence = self.get_sg_sequence(sg_project, sequence)
-        if not sg_sequence:
-            sg_sequence = self.create_sequence(sg_project, sequence)
-        if self.get_sg_shot(sg_project, sg_sequence, shot):
-            raise ValueError ("Shot already exists!")
-        data = {
-            "project": sg_project,
-            "sg_sequence": sg_sequence,
-            "code": shot
-        }
-        return self.sg.create("Shot", data)
-        return data
-
-    def create_sequence(self, project, sequence):
-        """ Create a sequence in Shotgun
-        :param project:     Name of the project
-        :param sequence:    Name of the sequence
-        :returns:           A dictionary with the information on the new
-                            sequence
-        """
-        sg_project = self.get_sg_project(project)
-        if not sg_project:
-            sg_project = self.create_project(project)
-        sg_sequence = self.get_sg_sequence(sg_project, sequence)
-        if sg_sequence:
-            raise ValueError ("Sequence already exists!")
-        data = {
-            "project": sg_project,
-            "code": sequence
-        }
-        return self.sg.create("Sequence", data)
-        return data
-
-    def create_project(self, project):
+    def __create_project(self, project):
         """ Create a project in Shotgun
-        :param project:     Name of the project
-        :returns:           A dictionary with the information on the new
-                            project
+        
+        :param project:         Project name
+        :returns:               Project entity
         """
-        sg_project = self.get_sg_project(project)
-        if sg_project:
-            raise ValueError ("Project already exists!")
         data = {
             "name": project,
             "sg_status": "Active"
         }
         return self.sg.create("Project", data)
 
-    def __delete_project(self):
-        pass
+    def __create_sequence(self, sg_project, sequence):
+        """ Create a sequence in Shotgun
+        
+        :param sg_project:      Project entity
+        :param sequence:        Sequence name
+        :returns:               Sequence entity
+        """
+        data = {
+            "project": sg_project,
+            "code": sequence
+        }
+        return self.sg.create("Sequence", data)
 
-    def __delete_sequence(self):
-        pass
+    def __create_asset(self, sg_project, sg_asset_type, asset_name):
+        """ Create an asset in Shotgun
+        
+        :param sg_project:      Project entity
+        :param sg_asset_type:   AssetType entity
+        :param asset_name:      Asset name
+        :returns                Asset entity
+        """
+        data = {
+            "project": sg_project,
+            "sg_asset_type": sg_asset_type,
+            "code": asset_name
+        }
+        return self.sg.create("Asset", data)
 
-    def __delete_shot(self):
-        pass
+    def __create_shot(self, sg_project, sg_sequence, shot):
+        """ Create a shot in Shotgun
+        
+        :param sg_project:      Project entity
+        :param sg_sequence:     Sequence entity
+        :param shot:            Shot name
+        :returns:               Shot entity
+        """
+        data = {
+            "project": sg_project,
+            "sg_sequence": sg_sequence,
+            "code": shot
+        }
+        return self.sg.create("Shot", data)
 
-    def __delete_asset(self):
-        pass
+    def __delete_project(self, sg_project):
+        """ Remove a project from Shotgun
+        
+        :param sg_project:       Project entity
+        :returns:               True or False
+        """
+        return self.sg.delete("Project", sg_project["id"])
+
+    def __delete_sequence(self, sg_sequence):
+        """ Remove a sequence form Shotgun
+        
+        :param sg_sequence:     Sequence entity
+        :returns:               True or False
+        """
+        return self.sg.delete("Sequence", sg_sequence["id"])
+
+    def __delete_asset(self, sg_asset):
+        """ Remove an asset from Shotgun
+        
+        :param sg_asset         Asset entity
+        :returns:               True or False
+        """
+        return self.sg.delete("Asset", sg_asset["id"])
+
+    def __delete_shot(self, sg_shot):
+        """ Remove a shot from Shotgun
+        
+        :param sg_shot:         Shot entity
+        :returns:               True or False
+        """
+        return self.sg.delete("Shot", sg_shot["id"])
 
     def __call__(self, cli_options):
         # Just bind options to self
@@ -369,18 +396,16 @@ class ShotgunDriver(DatabaseDriver, PluginManager):
         from job.utils import AssetNameFilter as Filter
         result = []
         filter = Filter(not sanitize)
-        items = self.__read_project(project)
-
+        items = self.__read_project_items(project)
         for item in items:
             assert "code" in item
-            data = {'job_asset_name': filter(item['code'])}
-
-            if item['type'] == 'Asset':
-                data['job_asset_type'] = filter(item['sg_asset_type'])
-
-            elif item['type'] == 'Shot':
-                if not item['sg_sequence']:
+            data = {"job_asset_name": filter(item["code"])}
+            if item["type"] == "Asset":
+                data["job_asset_type"] = filter(item["sg_asset_type"])
+            elif item["type"] == "Shot":
+                if not item["sg_sequence"]:
                     continue
-                data['job_asset_type'] = filter(item['sg_sequence']['name'])
+                data["job_asset_type"] = filter(item["sg_sequence"]["name"])
             result += [data]
         return result
+
