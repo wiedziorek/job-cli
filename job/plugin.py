@@ -71,6 +71,8 @@ class DeviceDriver():
         raise NotImplementedError('You must implement this method yourself!')
     def make_dir(self, path):
         raise NotImplementedError('You must implement this method yourself!')
+    def copy_file(self, source, target):
+        raise NotImplementedError('You must implement this method yourself!')
     # @abc.abstractmethod
     def make_link(self, path, targets):
         raise NotImplementedError('You must implement this method yourself!')
